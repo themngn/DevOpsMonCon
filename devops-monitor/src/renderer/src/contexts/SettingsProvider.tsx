@@ -15,7 +15,7 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     // Load settings on mount
-    window.api
+    (window.api as any)
       .getSettings()
       .then((loaded) => {
         setSettings(loaded)

@@ -1,5 +1,16 @@
 import React, { createContext, useContext, useState, useEffect } from 'react'
-import type { ServerEntry } from '../types'
+import type { AppSettings, ServerEntry } from '../types'
+
+declare global {
+  interface Window {
+    api: {
+      getSettings(): unknown
+      saveSettings(newSettings: AppSettings): unknown
+      storeGet: (key: string) => Promise<unknown>
+      storeSet: (key: string, value: unknown) => Promise<void>
+    }
+  }
+}
 
 interface ServerContextType {
   activeServer: ServerEntry | null
