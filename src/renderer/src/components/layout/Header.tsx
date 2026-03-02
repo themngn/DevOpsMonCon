@@ -25,10 +25,13 @@ export default function Header() {
   }[theme]
 
   return (
-    <header className="flex h-14 items-center justify-between border-b bg-card px-4">
-      <h1 className="text-lg font-semibold">{getPageTitle()}</h1>
+    <header className="grid h-14 grid-cols-3 items-center border-b bg-card px-4">
+      <div className="flex justify-start min-w-0">
+        <h1 className="text-lg font-semibold truncate">{getPageTitle()}</h1>
+      </div>
+      <div />
 
-      <div className="flex items-center gap-4">
+      <div className="flex items-center justify-end gap-4 shrink-0">
         {/* Auto Refresh Controls */}
         <div className="flex items-center gap-2 border-r pr-4">
           <label className="flex items-center gap-2 text-sm cursor-pointer">
@@ -44,7 +47,8 @@ export default function Header() {
           <select
             value={pollingInterval}
             onChange={(e) => updateSettings({ pollingInterval: Number(e.target.value) })}
-            className="h-8 rounded-md border bg-background px-2 text-sm"
+            className="h-8 rounded-md border bg-background px-2 text-sm text-foreground"
+            style={{ colorScheme: theme === 'system' ? 'light dark' : theme }}
             disabled={!autoRefresh}
           >
             <option value={5000}>5s</option>
