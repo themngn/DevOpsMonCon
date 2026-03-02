@@ -3,9 +3,12 @@ import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
 
+
 // start built-in mock API server for development/testing
 import { startMockServer } from './mock-server'
 import { setupIPC } from './ipc-handlers'
+
+
 
 function createWindow(): void {
   // Create the browser window.
