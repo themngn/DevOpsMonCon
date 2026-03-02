@@ -1,0 +1,9 @@
+# .coderabbit.yaml
+reviews:
+  # Enable the auto-title feature
+  auto_title_placeholder: "@coderabbitai"
+  
+  # Optional: Customize the style of the generated title
+  auto_title_instructions: >
+    Use the Conventional Commits format (e.g., 'feat: ...' or 'fix: ...'). 
+    Keep it under 60 characters and focus on the primary impact of the changes.
