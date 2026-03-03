@@ -1,7 +1,7 @@
 import { useLocation } from 'react-router-dom'
 import { RefreshCw, Moon, Sun, Monitor } from 'lucide-react'
 import { useSettings } from '../../hooks/useSettings'
-import { useTheme } from '../../hooks/useTheme'
+import { useTheme } from '../../contexts/ThemeProvider'
 
 export default function Header() {
   const location = useLocation()
@@ -51,20 +51,17 @@ export default function Header() {
             style={{ colorScheme: theme === 'system' ? 'light dark' : theme }}
             disabled={!autoRefresh}
           >
-            <option value={5000}>5s</option>
-            <option value={10000}>10s</option>
-            <option value={15000}>15s</option>
-            <option value={30000}>30s</option>
-            <option value={60000}>1m</option>
-            <option value={120000}>2m</option>
+            <option className="bg-background text-foreground" value={5000}>5s</option>
+            <option className="bg-background text-foreground" value={10000}>10s</option>
+            <option className="bg-background text-foreground" value={15000}>15s</option>
+            <option className="bg-background text-foreground" value={30000}>30s</option>
+            <option className="bg-background text-foreground" value={60000}>1m</option>
+            <option className="bg-background text-foreground" value={120000}>2m</option>
           </select>
         </div>
 
         {/* Status & Manual Refresh */}
         <div className="flex items-center gap-2">
-          <div className="w-32 text-right text-xs text-muted-foreground">
-            Updated just now
-          </div>
           <button
             className="p-2 hover:bg-muted rounded-full transition-colors"
             title="Refresh now"

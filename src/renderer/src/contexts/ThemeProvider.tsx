@@ -1,40 +1,50 @@
 import React, { createContext, useContext, useState, useEffect } from 'react'
+import { storage } from '../utils/storage'
 
-type Theme = 'light' | 'dark' | 'system'
+type Theme = 'dark' | 'light' | 'system'
 
 interface ThemeContextType {
   theme: Theme
   setTheme: (theme: Theme) => void
+  cycleTheme: () => void
 }
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined)
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const [theme, setTheme] = useState<Theme>('system')
-  const [mounted, setMounted] = useState(false)
+  const [theme, setTheme] = useState<Theme>(() => storage.get<Theme>('theme', 'system'))
 
   useEffect(() => {
-    // Load theme from store on mount
-    window.api.storeGet('theme').then((savedTheme) => {
-      if (savedTheme) setTheme(savedTheme)
-      setMounted(true)
-    }).catch(console.error)
-  }, [])
+    const root = window.document.documentElement
+    root.classList.remove('light', 'dark')
 
-  const handleSetTheme = (newTheme: Theme) => {
-    setTheme(newTheme)
-    window.api.storeSet('theme', newTheme).catch(console.error)
-    applyTheme(newTheme)
+    if (theme === 'system') {
+      const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)')
+      const applySystemTheme = () => {
+        const systemTheme = mediaQuery.matches ? 'dark' : 'light'
+        root.classList.remove('light', 'dark')
+        root.classList.add(systemTheme)
+        console.log('[Theme] System theme applied:', systemTheme)
+      }
+      applySystemTheme()
+      mediaQuery.addEventListener('change', applySystemTheme)
+      return () => mediaQuery.removeEventListener('change', applySystemTheme)
+    }
+
+    root.classList.add(theme)
+    console.log('[Theme] Manual theme applied:', theme)
+  }, [theme])
+
+  const cycleTheme = () => {
+    const modes: Theme[] = ['dark', 'light', 'system']
+    const nextIndex = (modes.indexOf(theme) + 1) % modes.length
+    const nextTheme = modes[nextIndex]
+    setTheme(nextTheme)
+    storage.set('theme', nextTheme)
   }
 
-  useEffect(() => {
-    if (mounted) {
-      applyTheme(theme)
-    }
-  }, [theme, mounted])
-
   return (
-    <ThemeContext.Provider value={{ theme, setTheme: handleSetTheme }}>
+    <ThemeContext.Provider value={{ theme, setTheme, cycleTheme }}>
       {children}
     </ThemeContext.Provider>
   )
@@ -46,17 +56,4 @@ export function useTheme() {
     throw new Error('useTheme must be used within ThemeProvider')
   }
   return context
-}
-
-function applyTheme(theme: Theme) {
-  const root = document.documentElement
-  const isDark =
-    theme === 'dark' ||
-    (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches)
-
-  if (isDark) {
-    root.classList.add('dark')
-  } else {
-    root.classList.remove('dark')
-  }
 }

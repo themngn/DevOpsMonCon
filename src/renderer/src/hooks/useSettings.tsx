@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { storage } from '../utils/storage'
+import { useSettingsContext } from '../contexts/SettingsProvider'
 
 interface Settings {
   pollingInterval: number
@@ -25,4 +26,5 @@ export function useSettings() {
   }
 
   return { ...settings, updateSettings }
+  return useSettingsContext()
 }

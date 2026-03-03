@@ -1,44 +1,43 @@
-import React, { createContext, useContext, useState, useEffect } from 'react'
-import type { AppSettings } from '../types'
+import React, { createContext, useContext, useState } from 'react'
+import { storage } from '../utils/storage'
 
-interface SettingsContextType {
-  settings: AppSettings | null
-  updateSettings: (settings: AppSettings) => Promise<void>
-  loading: boolean
+interface Settings {
+  pollingInterval: number
+  autoRefresh: boolean
+}
+
+const DEFAULT_SETTINGS: Settings = {
+  pollingInterval: 15000,
+  autoRefresh: true
+}
+
+interface SettingsContextType extends Settings {
+  updateSettings: (newSettings: Partial<Settings>) => void
 }
 
 const SettingsContext = createContext<SettingsContextType | undefined>(undefined)
 
 export function SettingsProvider({ children }: { children: React.ReactNode }) {
-  const [settings, setSettings] = useState<AppSettings | null>(null)
-  const [loading, setLoading] = useState(true)
+  const [settings, setSettings] = useState<Settings>(() =>
+    storage.get<Settings>('app-settings', DEFAULT_SETTINGS)
+  )
 
-  useEffect(() => {
-    // Load settings on mount
-    (window.api as any)
-      .getSettings()
-      .then((loaded) => {
-        setSettings(loaded)
-      })
-      .catch(console.error)
-      .finally(() => {
-        setLoading(false)
-      })
-  }, [])
-
-  const updateSettings = async (newSettings: AppSettings) => {
-    setSettings(newSettings)
-    await window.api.saveSettings(newSettings)
+  const updateSettings = (newSettings: Partial<Settings>) => {
+    setSettings((prev) => {
+      const updated = { ...prev, ...newSettings }
+      storage.set('app-settings', updated)
+      return updated
+    })
   }
 
   return (
-    <SettingsContext.Provider value={{ settings, updateSettings, loading }}>
+    <SettingsContext.Provider value={{ ...settings, updateSettings }}>
       {children}
     </SettingsContext.Provider>
   )
 }
 
-export function useSettings() {
+export function useSettingsContext() {
   const context = useContext(SettingsContext)
   if (!context) {
     throw new Error('useSettings must be used within SettingsProvider')

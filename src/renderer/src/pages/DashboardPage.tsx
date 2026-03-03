@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react'
 import { useServer } from '../contexts/ServerProvider'
+import { useSettings } from '../hooks/useSettings'
 import { Activity, CheckCircle, XCircle, Clock } from 'lucide-react'
 
 export default function DashboardPage() {
   const { activeServer } = useServer()
+  const { pollingInterval, autoRefresh } = useSettings()
   const [status, setStatus] = useState<'online' | 'offline' | 'checking'>('checking')
   const [lastPing, setLastPing] = useState<string>('-')
 
@@ -25,12 +27,14 @@ export default function DashboardPage() {
     }
   }
 
-  // Опитування сервера при завантаженні та кожні 30 секунд
+  // Опитування сервера
   useEffect(() => {
     fetchData()
-    const interval = setInterval(fetchData, 30000)
+    if (!autoRefresh) return
+
+    const interval = setInterval(fetchData, pollingInterval)
     return () => clearInterval(interval)
-  }, [activeServer])
+  }, [activeServer, autoRefresh, pollingInterval])
 
   return (
     <div className="space-y-6">
