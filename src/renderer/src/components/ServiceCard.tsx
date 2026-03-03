@@ -1,5 +1,5 @@
 import { Service } from '../types'
-import StatusBadge from './shared/StatusBadge'
+import { StatusBadge } from './shared/StatusBadge'
 import { useNavigate } from 'react-router-dom'
 
 interface Props {
