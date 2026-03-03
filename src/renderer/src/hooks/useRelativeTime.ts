@@ -53,11 +53,9 @@ export function useRelativeTime(date: Date | null): string {
       }
 
       const formatted = formatDistanceToNowStrict(date, {
-        addSuffix: true,
-        unit: 'second'
+        addSuffix: true
       })
 
-      // Перетворюємо "5 seconds ago" → "5s ago"
       const short = formatted
         .replace(' seconds ago', 's ago')
         .replace(' second ago', 's ago')
