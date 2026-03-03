@@ -119,10 +119,10 @@ export default function ServiceDetailPage() {
 
             {/* Info Cards */}
             <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
-                <InfoCard title="CPU" value={`${service.cpu}%`} icon={Cpu} />
-                <InfoCard title="RAM" value={`${service.ram}%`} icon={Activity} />
-                <InfoCard title="Disk" value={`${service.disk}%`} icon={HardDrive} />
-                <InfoCard title="IOPs" value={service.iops} icon={Activity} />
+                <InfoCard title="CPU" value={`${service.cpu.toFixed(1)}%`} icon={Cpu} />
+                <InfoCard title="RAM" value={`${service.ram.toFixed(1)}%`} icon={Activity} />
+                <InfoCard title="Disk" value={`${service.disk.toFixed(1)}%`} icon={HardDrive} />
+                <InfoCard title="IOPs" value={Math.round(service.iops)} icon={Activity} />
                 <InfoCard title="Uptime" value={`${Math.floor(service.uptime / 60)}m`} icon={Clock} />
                 <InfoCard title="Version" value={`v${service.version}`} icon={Box} />
             </div>
