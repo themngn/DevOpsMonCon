@@ -34,10 +34,9 @@ interface AlertState extends Alert {
 }
 
 const SEVERITY_OPTIONS = [
-  { label: 'All Severities', value: ALL },
-  { label: 'Critical', value: 'critical' },
-  { label: 'Warning', value: 'warning' },
-  { label: 'Info', value: 'info' }
+  { label: 'All', value: ALL },
+  { label: 'Warnings + Errors', value: 'warn' },
+  { label: 'Errors only', value: 'error' }
 ]
 
 const STATUS_OPTIONS = [
@@ -56,8 +55,16 @@ const TIME_RANGE_OPTIONS = [
 const PAGE_SIZE = 20
 const SKELETON_ROWS = 5
 
-// Strip sentinel back to undefined for the API
-const toParam = (v: string) => (v === ALL ? undefined : v)
+// Map dropdown values to API params or undefined. Use client-side grouping for
+// the "Warnings + Errors" option (value 'warn') which should include both
+// 'warning' and 'critical'.
+const toParam = (v: string) => {
+  if (v === ALL) return undefined
+  if (v === 'error') return 'critical'
+  // when selecting the grouped 'warn' option, request all severities and
+  // apply grouping client-side
+  return undefined
+}
 
 export default function AlertsPage() {
   const [alerts, setAlerts] = useState<AlertState[]>([])
@@ -180,20 +187,20 @@ export default function AlertsPage() {
         <div className="h-full overflow-auto">
         <Table>
           <TableHeader>
-            <TableRow>
-              <TableHead className="w-28">Severity</TableHead>
-              <TableHead className="w-40">Service</TableHead>
-              <TableHead>Message</TableHead>
-              <TableHead className="w-32">Time</TableHead>
-              <TableHead className="w-36">Status</TableHead>
-              <TableHead className="w-28">Actions</TableHead>
+            <TableRow className="border-b border-border hover:bg-transparent">
+              <TableHead className="w-28 py-2.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground/70 sticky top-0 bg-card z-10">Severity</TableHead>
+              <TableHead className="w-40 py-2.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground/70 sticky top-0 bg-card z-10">Service</TableHead>
+              <TableHead className="py-2.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground/70 sticky top-0 bg-card z-10">Message</TableHead>
+              <TableHead className="w-32 py-2.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground/70 sticky top-0 bg-card z-10">Time</TableHead>
+              <TableHead className="w-36 py-2.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground/70 sticky top-0 bg-card z-10">Status</TableHead>
+              <TableHead className="w-28 py-2.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground/70 sticky top-0 bg-card z-10">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {loading ? (
               // Skeleton rows while loading
               Array.from({ length: SKELETON_ROWS }).map((_, i) => (
-                <TableRow key={i}>
+                <TableRow key={i} className="border-b border-border/40">
                   <TableCell><Skeleton className="h-5 w-16" /></TableCell>
                   <TableCell><Skeleton className="h-4 w-28" /></TableCell>
                   <TableCell><Skeleton className="h-4 w-full" /></TableCell>
@@ -218,8 +225,18 @@ export default function AlertsPage() {
                 </TableCell>
               </TableRow>
             ) : (
-              alerts.map((alert, idx) => (
-                <TableRow key={alert.id}>
+              // Apply client-side grouping for the severity filter. When
+              // `filters.severity` is 'warn', include both 'warning' and
+              // 'critical'. When it's 'error', include only 'critical'.
+              alerts
+                .filter((a) => {
+                  if (filters.severity === ALL) return true
+                  if (filters.severity === 'warn') return ['warning', 'critical'].includes(a.severity)
+                  if (filters.severity === 'error') return a.severity === 'critical'
+                  return true
+                })
+                .map((alert, idx) => (
+                <TableRow key={alert.id} className="group border-b border-border/40 hover:bg-muted/30 transition-colors">
                   {/* Severity */}
                   <TableCell>
                     <span

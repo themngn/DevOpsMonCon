@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { format, fromUnixTime, parseISO, isValid } from 'date-fns'
-import { Search, X, AlertCircle, Info, TriangleAlert } from 'lucide-react'
+import { Search, X, AlertCircle, Info, TriangleAlert, Filter } from 'lucide-react'
 import { getLogs } from '../services/api'
 import { useSettings } from '../hooks/useSettings'
 import { usePolling } from '../hooks/usePolling'
@@ -10,13 +10,7 @@ import { ErrorState } from '../components/ErrorState'
 import type { LogEntry, PaginatedResponse, LogLevel } from '../types/index'
 import { cn } from '../lib/utils'
 import { Button } from '../../../../components/ui/button'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue
-} from '../../../../components/ui/select'
+import { Dropdown } from '../components/ui/Dropdown'
 import { Skeleton } from '../../../../components/ui/skeleton'
 import {
   Table,
@@ -54,6 +48,12 @@ function formatTs(ts: number | string): string {
 
 // Severity hierarchy: INFO < WARN < ERROR
 // When filtering by WARN, show WARN + ERROR; when filtering by INFO, show all
+const LEVEL_OPTIONS = [
+  { label: 'All', value: 'all' },
+  { label: 'Warnings + Errors', value: 'warn' },
+  { label: 'Errors only', value: 'error' },
+]
+
 const LEVEL_HIERARCHY: Record<string, LogLevel[]> = {
   all: ['INFO', 'WARN', 'ERROR'],
   warn: ['WARN', 'ERROR'],
@@ -213,8 +213,8 @@ export default function LogsPage() {
   const hasFilters = search !== '' || level !== 'all'
   const levelLabel = {
     all: 'All',
-    error: 'Error',
-    warn: 'Warning',
+    error: 'Errors only',
+    warn: 'Warnings + Errors',
   }[level] || 'Unknown'
 
   // ── render ─────────────────────────────────────────────────────────────────
@@ -244,38 +244,13 @@ export default function LogsPage() {
             )}
           </div>
 
-          {/* Level filter — more opaque and visible */}
-          <Select value={level} onValueChange={handleLevelChange}>
-            <SelectTrigger className="h-8 w-40 text-sm bg-background border border-input hover:bg-muted/50 text-foreground font-medium">
-              <SelectValue placeholder="All Levels" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">
-                <span className="flex items-center gap-2">
-                  <span className="h-2.5 w-2.5 rounded-full bg-muted-foreground/60" />
-                  <span className="font-medium">All Levels</span>
-                </span>
-              </SelectItem>
-              <SelectItem value="error">
-                <span className="flex items-center gap-2">
-                  <span className="h-2.5 w-2.5 rounded-full bg-red-500" />
-                  <span className="font-medium">Error Only</span>
-                </span>
-              </SelectItem>
-              <SelectItem value="warn">
-                <span className="flex items-center gap-2">
-                  <span className="h-2.5 w-2.5 rounded-full bg-yellow-400" />
-                  <span className="font-medium">Warning + Error</span>
-                </span>
-              </SelectItem>
-              <SelectItem value="info">
-                <span className="flex items-center gap-2">
-                  <span className="h-2.5 w-2.5 rounded-full bg-blue-400" />
-                  <span className="font-medium">Info + All</span>
-                </span>
-              </SelectItem>
-            </SelectContent>
-          </Select>
+          {/* Level filter */}
+          <Dropdown
+            value={level}
+            options={LEVEL_OPTIONS}
+            onChange={handleLevelChange}
+            icon={Filter}
+          />
 
           {/* Active filter chips */}
           {hasFilters && (
