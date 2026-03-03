@@ -12,10 +12,12 @@ export default defineConfig({
   },
   renderer: {
     resolve: {
-      alias: {
-        '@renderer': resolve('src/renderer/src'),
-        '@': resolve('src/renderer/src')
-      }
+      alias: [
+        { find: /^@\/components\/ui(.*)/, replacement: resolve('components/ui') + '$1' },
+        { find: /^@\/components(.*)/, replacement: resolve('components') + '$1' },
+        { find: '@renderer', replacement: resolve('src/renderer/src') },
+        { find: '@', replacement: resolve('src/renderer/src') }
+      ]
     },
     plugins: [react(), tailwindcss()]
   }

@@ -1,20 +1,24 @@
 import { useEffect, useRef } from 'react'
+import { useSettingsContext } from '../contexts/SettingsProvider'
 
 /**
- * Calls `callback` every `interval` ms while `enabled` is true.
- * Uses a ref so that changing `callback` never restarts the timer.
+ * Runs `callback` immediately, then repeats it at the configured
+ * pollingInterval as long as autoRefresh is enabled.
+ * Safe to use with stale closures — always calls the latest callback ref.
  */
-export function usePolling(
-  callback: () => void,
-  interval: number,
-  enabled: boolean
-): void {
-  const savedCallback = useRef(callback)
-  savedCallback.current = callback
+export function usePolling(callback: () => void) {
+  const { pollingInterval, autoRefresh } = useSettingsContext()
+
+  // Keep a stable ref so the interval never stales on callback identity changes
+  const callbackRef = useRef(callback)
+  callbackRef.current = callback
 
   useEffect(() => {
-    if (!enabled || interval <= 0) return
-    const id = setInterval(() => savedCallback.current(), interval)
+    callbackRef.current()
+
+    if (!autoRefresh) return
+
+    const id = setInterval(() => callbackRef.current(), pollingInterval)
     return () => clearInterval(id)
-  }, [interval, enabled])
+  }, [pollingInterval, autoRefresh])
 }
