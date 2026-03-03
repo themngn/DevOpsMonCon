@@ -5,7 +5,7 @@ import type {
   Alert,
   PaginatedResponse,
   ServiceAlertSettings
-} from '../types'
+} from '../types/index'
 
 let apiPort = 3001
 
