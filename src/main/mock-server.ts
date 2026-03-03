@@ -1,8 +1,15 @@
 import express, { Request, Response } from "express";
 import * as mock from "./mock-data";
+import cors from 'cors'
 
 const app = express();
+app.use(cors()) 
 app.use(express.json());
+
+// Root health check
+app.get("/", (_req, res) => {
+  res.json({ status: "ok", message: "DevOps Monitor API is running" });
+});
 
 // services
 app.get("/api/services", (req: Request, res: Response) => {
@@ -109,7 +116,7 @@ app.put("/api/services/:id/alert-settings", (req, res) => {
 export function startMockServer(port = 3001) {
   mock.initMockData();
   mock.startTicker();
-  app.listen(port, "127.0.0.1", () => {
-    console.log(`Mock server listening on http://127.0.0.1:${port}`);
-  });
+  app.listen(port, '0.0.0.0', () => {
+    console.log(`Mock server listening on http://127.0.0.1:${port}`)
+  })
 }

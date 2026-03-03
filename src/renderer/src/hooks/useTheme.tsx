@@ -1,17 +1,9 @@
-import React, { createContext, useContext, useState, useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { storage } from '../utils/storage'
 
 type Theme = 'dark' | 'light' | 'system'
 
-interface ThemeContextType {
-  theme: Theme
-  setTheme: (theme: Theme) => void
-  cycleTheme: () => void
-}
-
-const ThemeContext = createContext<ThemeContextType | undefined>(undefined)
-
-export function ThemeProvider({ children }: { children: React.ReactNode }) {
+export function useTheme() {
   const [theme, setTheme] = useState<Theme>(() => storage.get<Theme>('theme', 'system'))
 
   useEffect(() => {
@@ -24,7 +16,6 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
         const systemTheme = mediaQuery.matches ? 'dark' : 'light'
         root.classList.remove('light', 'dark')
         root.classList.add(systemTheme)
-        console.log('[Theme] System theme applied:', systemTheme)
       }
       applySystemTheme()
       mediaQuery.addEventListener('change', applySystemTheme)
@@ -32,7 +23,6 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     }
 
     root.classList.add(theme)
-    console.log('[Theme] Manual theme applied:', theme)
   }, [theme])
 
   const cycleTheme = () => {
@@ -43,17 +33,5 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     storage.set('theme', nextTheme)
   }
 
-  return (
-    <ThemeContext.Provider value={{ theme, setTheme, cycleTheme }}>
-      {children}
-    </ThemeContext.Provider>
-  )
-}
-
-export function useTheme() {
-  const context = useContext(ThemeContext)
-  if (!context) {
-    throw new Error('useTheme must be used within ThemeProvider')
-  }
-  return context
+  return { theme, cycleTheme }
 }
