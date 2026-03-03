@@ -1,5 +1,5 @@
 ﻿import { useState, useCallback, useEffect } from 'react'
-import { format } from 'date-fns'
+import { formatDistanceToNow } from 'date-fns'
 import { AlertCircle, CheckCircle, Loader2, ShieldAlert, Filter, Clock } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Dropdown } from '../components/ui/Dropdown'
@@ -138,7 +138,7 @@ export default function AlertsPage() {
   const formatTime = (ts: number | string) => {
     // mock-data timestamps are already in ms (Date.now()), no multiplication needed
     const d = typeof ts === 'string' ? new Date(ts) : new Date(ts as number)
-    return format(d, 'MMM d, HH:mm:ss')
+    return formatDistanceToNow(d, { addSuffix: true })
   }
 
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE))
@@ -176,7 +176,8 @@ export default function AlertsPage() {
       </div>
 
       {/* Table */}
-      <div className="flex-1 min-h-0 rounded-lg border bg-card overflow-auto">
+      <div className="flex-1 min-h-0 rounded-lg border bg-card overflow-hidden">
+        <div className="h-full overflow-auto">
         <Table>
           <TableHeader>
             <TableRow>
@@ -294,6 +295,7 @@ export default function AlertsPage() {
             )}
           </TableBody>
         </Table>
+        </div>
       </div>
 
       {/* Pagination */}
