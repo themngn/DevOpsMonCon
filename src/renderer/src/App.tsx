@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { useServer } from './contexts/ServerProvider'
-import LoginPage from './pages/LoginPage'
+import AppShell from './components/layout/AppShell'
+import ServerSelectPage from './pages/ServerSelectPage'
 import DashboardPage from './pages/DashboardPage'
 import ServicesPage from './pages/ServicesPage'
 import AlertsPage from './pages/AlertsPage'
@@ -33,7 +34,7 @@ function App(): React.JSX.Element {
     return (
       <BrowserRouter>
         <Routes>
-          <Route path="/login" element={<LoginPage />} />
+          <Route path="/login" element={<ServerSelectPage />} />
           <Route path="*" element={<Navigate to="/login" replace />} />
         </Routes>
       </BrowserRouter>
@@ -43,47 +44,18 @@ function App(): React.JSX.Element {
   return (
     <BrowserRouter>
       <Routes>
-        <Route path="/login" element={<LoginPage />} />
-        <Route
-          path="/"
-          element={
-            <ProtectedRoute>
-              <DashboardPage />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/services"
-          element={
-            <ProtectedRoute>
-              <ServicesPage />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/alerts"
-          element={
-            <ProtectedRoute>
-              <AlertsPage />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/logs"
-          element={
-            <ProtectedRoute>
-              <LogsPage />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/settings"
-          element={
-            <ProtectedRoute>
-              <SettingsPage />
-            </ProtectedRoute>
-          }
-        />
+        <Route path="/login" element={<ServerSelectPage />} />
+        
+        {/* Protected Routes wrapped in AppShell */}
+        <Route element={<ProtectedRoute><AppShell /></ProtectedRoute>}>
+          <Route path="/" element={<DashboardPage />} />
+          <Route path="/services" element={<ServicesPage />} />
+          <Route path="/services/:id" element={<ServicesPage />} />
+          <Route path="/alerts" element={<AlertsPage />} />
+          <Route path="/logs" element={<LogsPage />} />
+          <Route path="/settings" element={<SettingsPage />} />
+        </Route>
+
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>
