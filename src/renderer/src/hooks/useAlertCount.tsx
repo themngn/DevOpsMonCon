@@ -1,7 +1,25 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { getActiveAlertCount } from '@/services/api'
 
-// Mock hook for #5 coordination
 export function useAlertCount() {
-  const [count] = useState(0) // Replace with real logic later
+  const [count, setCount] = useState(0)
+
+  useEffect(() => {
+    const fetchCount = async () => {
+      try {
+        const result = await getActiveAlertCount()
+        setCount(result.count)
+      } catch (err) {
+        console.error('Failed to fetch active alert count:', err)
+        setCount(0)
+      }
+    }
+
+    fetchCount()
+    // Refresh every 30 seconds
+    const interval = setInterval(fetchCount, 30000)
+    return () => clearInterval(interval)
+  }, [])
+
   return count
 }
