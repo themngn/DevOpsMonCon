@@ -47,7 +47,7 @@ export default function ServiceCard({ service }: Props) {
         <Metric label="Disk" value={service.disk} />
 
         <div className="text-xs text-muted-foreground">
-          IOPs: {service.iops}
+          IOPs: {Math.round(service.iops)}
         </div>
       </div>
     </div>

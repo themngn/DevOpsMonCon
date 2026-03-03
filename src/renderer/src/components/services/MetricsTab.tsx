@@ -18,10 +18,48 @@ const UNITS = [
     { label: 'Minutes', value: '60' },
     { label: 'Hours', value: '3600' },
     { label: 'Days', value: '86400' },
-    { label: 'Weeks', value: '604800' },
-    { label: 'Months', value: '2592000' },
-    { label: 'Years', value: '31536000' }
+    { label: 'Weeks', value: '604800' }
 ]
+
+// Helper function to format timestamps based on actual data span
+function getTimeFormatter(data: MetricPoint[]) {
+    if (data.length < 2) {
+        return (timestamp: number) => {
+            const d = new Date(timestamp)
+            const h = d.getHours().toString().padStart(2, '0')
+            const m = d.getMinutes().toString().padStart(2, '0')
+            const s = d.getSeconds().toString().padStart(2, '0')
+            return `${h}:${m}:${s}`
+        }
+    }
+
+    // Calculate actual data span
+    const timestamps = data.map(p => typeof p.timestamp === 'number' ? p.timestamp : new Date(p.timestamp).getTime())
+    const minTime = Math.min(...timestamps)
+    const maxTime = Math.max(...timestamps)
+    const actualSpanMs = maxTime - minTime
+
+    return (timestamp: number) => {
+        const d = new Date(timestamp)
+        const h = d.getHours().toString().padStart(2, '0')
+        const m = d.getMinutes().toString().padStart(2, '0')
+        const s = d.getSeconds().toString().padStart(2, '0')
+        const month = (d.getMonth() + 1).toString().padStart(2, '0')
+        const day = d.getDate().toString().padStart(2, '0')
+
+        // Up to 2 minutes: show HH:MM:SS
+        if (actualSpanMs <= 120_000) return `${h}:${m}:${s}`
+        
+        // 2 minutes to 6 hours: show HH:MM
+        if (actualSpanMs <= 21_600_000) return `${h}:${m}`
+        
+        // 6 hours to 7 days: show MM/DD HH:MM
+        if (actualSpanMs <= 604_800_000) return `${month}/${day} ${h}:${m}`
+        
+        // More than 7 days: show MM/DD
+        return `${month}/${day}`
+    }
+}
 
 export function MetricsTab({ serviceId }: { serviceId: string }) {
     const [rangeVal, setRangeVal] = useState('30')
@@ -95,6 +133,7 @@ function ChartCard({
     loading: boolean
     domain: [any, any]
 }) {
+    const timeFormatter = getTimeFormatter(data)
     return (
         <div className="border rounded-lg p-4 flex flex-col gap-4 bg-background shadow-sm h-64">
             <h3 className="font-semibold text-sm">{title}</h3>
@@ -115,10 +154,7 @@ function ChartCard({
                             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="currentColor" className="opacity-10" />
                             <XAxis
                                 dataKey="timestamp"
-                                tickFormatter={(val) => {
-                                    const d = new Date(val)
-                                    return `${d.getHours()}:${d.getMinutes().toString().padStart(2, '0')}`
-                                }}
+                                tickFormatter={timeFormatter}
                                 className="text-xs text-muted-foreground"
                                 tickLine={false}
                                 axisLine={false}
@@ -132,8 +168,9 @@ function ChartCard({
                                 tickFormatter={(val) => `${val}`}
                             />
                             <Tooltip
-                                contentStyle={{ borderRadius: '8px', border: '1px solid var(--border)', backgroundColor: 'var(--background)' }}
+                                contentStyle={{ borderRadius: '8px', border: '1px solid var(--border)', backgroundColor: 'rgba(0, 0, 0, 0.85)' }}
                                 labelFormatter={(l) => new Date(l).toLocaleTimeString()}
+                                formatter={(value) => typeof value === 'number' ? value.toFixed(2) : value}
                             />
                             <Area
                                 type="monotone"
