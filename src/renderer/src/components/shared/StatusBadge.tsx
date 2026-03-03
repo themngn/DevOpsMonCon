@@ -1,22 +1,34 @@
-import { ServiceStatus } from '../../types'
+import { cn } from '../../lib/utils'
+import type { ServiceStatus } from '../../types/index'
 
-interface Props {
-  status: ServiceStatus
-}
+export function StatusBadge({
+    status,
+    className
+}: {
+    status: ServiceStatus
+    className?: string
+}) {
+    const base = "inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold"
+    let colorClass = ""
 
-export default function StatusBadge({ status }: Props) {
-  const base = "px-2 py-1 text-xs rounded font-medium"
+    switch (status) {
+        case 'healthy':
+            colorClass = "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400"
+            break
+        case 'degraded':
+            colorClass = "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400"
+            break
+        case 'critical':
+            colorClass = "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400"
+            break
+        case 'down':
+            colorClass = "bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-400"
+            break
+    }
 
-  const colors: Record<ServiceStatus, string> = {
-    healthy: "bg-green-600/20 text-green-400",
-    degraded: "bg-yellow-600/20 text-yellow-400",
-    critical: "bg-red-600/20 text-red-400",
-    down: "bg-gray-600/20 text-gray-400"
-  }
-
-  return (
-    <span className={`${base} ${colors[status]}`}>
-      {status}
-    </span>
-  )
+    return (
+        <span className={cn(base, colorClass, className)}>
+            {status}
+        </span>
+    )
 }

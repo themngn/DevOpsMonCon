@@ -5,7 +5,7 @@ import type {
   Alert,
   PaginatedResponse,
   ServiceAlertSettings
-} from '../types'
+} from '../types/index'
 
 let apiPort = 3001
 
@@ -62,6 +62,7 @@ export async function getLogs(opts?: {
   search?: string
   page?: number
   limit?: number
+  timeRange?: number
 }) {
   const params = new URLSearchParams()
   if (opts?.serviceId) params.append('service', opts.serviceId)
@@ -69,6 +70,7 @@ export async function getLogs(opts?: {
   if (opts?.search) params.append('search', opts.search)
   if (opts?.page) params.append('page', opts.page.toString())
   if (opts?.limit) params.append('limit', opts.limit.toString())
+  if (opts?.timeRange) params.append('timeRange', opts.timeRange.toString())
   const res = await fetch(`${API_BASE()}/api/logs?${params}`)
   if (!res.ok) throw new Error(`Failed to fetch logs: ${res.statusText}`)
   return res.json() as Promise<PaginatedResponse<LogEntry>>
@@ -133,10 +135,7 @@ export async function getAlertSettings(serviceId: string) {
   return res.json() as Promise<ServiceAlertSettings>
 }
 
-export async function updateAlertSettings(
-  serviceId: string,
-  settings: ServiceAlertSettings
-) {
+export async function updateAlertSettings(serviceId: string, settings: ServiceAlertSettings) {
   const res = await fetch(`${API_BASE()}/api/services/${serviceId}/alert-settings`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
