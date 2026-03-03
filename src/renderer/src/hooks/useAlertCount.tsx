@@ -1,7 +1,20 @@
-import { useState } from 'react'
+import { useState, useCallback } from 'react'
+import { getActiveAlertCount } from '@/services/api'
+import { usePolling } from './usePolling'
 
-// Mock hook for #5 coordination
 export function useAlertCount() {
-  const [count] = useState(0) // Replace with real logic later
+  const [count, setCount] = useState(0)
+
+  const fetchCount = useCallback(async () => {
+    try {
+      const result = await getActiveAlertCount()
+      setCount(result.count)
+    } catch (err) {
+      console.error('Failed to fetch active alert count:', err)
+    }
+  }, [])
+
+  usePolling(fetchCount)
+
   return count
 }
