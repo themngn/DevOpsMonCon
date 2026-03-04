@@ -56,11 +56,12 @@ export function usePolling<T>(
   }, [onError])
 
   useEffect(() => {
-    if (!enabled) return
+    // Perform initial fetch on mount
+    if (isFirstFetch.current) {
+      doFetch()
+    }
 
-    isFirstFetch.current = !data
-    setIsLoading(!data)
-    doFetch()
+    if (!enabled) return
 
     const id = setInterval(doFetch, intervalMs)
     return () => clearInterval(id)
