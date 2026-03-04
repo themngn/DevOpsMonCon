@@ -55,6 +55,8 @@ export interface PaginatedResponse<T> {
 export interface AppSettings {
   pollingInterval: number
   autoRefresh: boolean
+  notificationsEnabled: boolean
+  notificationThreshold: AlertSeverity | 'all' | 'off'
 }
 
 export interface MetricThreshold {

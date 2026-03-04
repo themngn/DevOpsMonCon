@@ -87,9 +87,25 @@ app.whenReady().then(() => {
   createTray(mainWindow)
 
   // Listen for new alerts from mock data and trigger notifications
-  mockEvents.on('new-alert', (alert: Alert) => {
-    if (alert.severity === 'critical' || alert.severity === 'warning') {
-      const emoji = alert.severity === 'critical' ? '🚨' : '⚠️'
+  mockEvents.on('new-alert', async (alert: Alert) => {
+    // Get latest settings from store (key is 'settings')
+    const store = await (await import('./store')).getStore()
+    const settings = store.get('settings') || {
+      notificationsEnabled: true,
+      notificationThreshold: 'all'
+    }
+
+    // Explicitly check for Mute/Off state
+    if (!settings.notificationsEnabled || settings.notificationThreshold === 'off') {
+      return
+    }
+
+    const severityMap: Record<string, number> = { info: 0, warning: 1, critical: 2, all: -1 }
+    const threshold = severityMap[settings.notificationThreshold] ?? -1
+    const alertSeverity = severityMap[alert.severity] ?? 0
+
+    if (alertSeverity >= threshold) {
+      const emoji = alert.severity === 'critical' ? '🚨' : alert.severity === 'warning' ? '⚠️' : 'ℹ️'
       NotificationManager.send(
         `${emoji} Alert: ${alert.serviceName}`,
         alert.message,

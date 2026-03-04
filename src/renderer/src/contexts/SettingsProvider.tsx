@@ -1,14 +1,15 @@
 import React, { createContext, useContext, useState } from 'react'
 import { storage } from '../utils/storage'
 
-interface Settings {
-  pollingInterval: number
-  autoRefresh: boolean
-}
+import { AppSettings } from '../types'
+
+interface Settings extends AppSettings {}
 
 const DEFAULT_SETTINGS: Settings = {
   pollingInterval: 15000,
-  autoRefresh: true
+  autoRefresh: true,
+  notificationsEnabled: true,
+  notificationThreshold: 'all'
 }
 
 interface SettingsContextType extends Settings {
@@ -26,6 +27,12 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
     setSettings((prev) => {
       const updated = { ...prev, ...newSettings }
       storage.set('app-settings', updated)
+      
+      // Sync with main process so notifications can respect these settings
+      if (window.api?.saveSettings) {
+        window.api.saveSettings(updated)
+      }
+      
       return updated
     })
   }
