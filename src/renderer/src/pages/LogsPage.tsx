@@ -101,21 +101,21 @@ function LevelBadge({ level }: { level: LogLevel }) {
 
 // ── skeleton rows ─────────────────────────────────────────────────────────────
 
-function SkeletonRows({ count = 5 }: { count?: number }) {
+function SkeletonRows({ count = 15 }: { count?: number }) {
   return (
     <>
       {Array.from({ length: count }).map((_, i) => (
-        <TableRow key={i} className="border-b border-border/40">
-          <TableCell className="py-3">
+        <TableRow key={i} className="border-b border-border/40 hover:bg-transparent">
+          <TableCell className="py-2.5">
             <Skeleton className="h-3.5 w-28" />
           </TableCell>
-          <TableCell className="py-3">
+          <TableCell className="py-2.5">
             <Skeleton className="h-5 w-16 rounded-md" />
           </TableCell>
-          <TableCell className="py-3">
+          <TableCell className="py-2.5">
             <Skeleton className="h-3.5 w-24" />
           </TableCell>
-          <TableCell className="py-3">
+          <TableCell className="py-2.5">
             <Skeleton className="h-3.5 w-3/4" />
           </TableCell>
         </TableRow>
@@ -374,7 +374,7 @@ export default function LogsPage() {
             </TableHeader>
             <TableBody>
               {loading ? (
-                <SkeletonRows count={5} />
+                <SkeletonRows count={15} />
               ) : error ? (
                 <TableRow className="hover:bg-transparent">
                   <TableCell colSpan={4} className="p-0">

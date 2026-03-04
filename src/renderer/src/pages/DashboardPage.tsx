@@ -148,15 +148,15 @@ export default function DashboardPage() {
       {isLoading ? (
         <>
           {/* SUMMARY SKELETON */}
-          <div className="grid gap-2 grid-cols-2 lg:grid-cols-4">
-            {Array.from({ length: 4 }).map((_, i) => (
+          <div className="grid gap-2 grid-cols-2 md:grid-cols-3 lg:grid-cols-5">
+            {Array.from({ length: 5 }).map((_, i) => (
               <SummaryCardSkeleton key={i} />
             ))}
           </div>
 
           {/* SERVICES SKELETON */}
           <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {Array.from({ length: 8 }).map((_, i) => (
+            {Array.from({ length: 12 }).map((_, i) => (
               <ServiceCardSkeleton key={i} />
             ))}
           </div>

@@ -266,8 +266,8 @@ export default function AlertsPage() {
             <TableBody>
               {loading ? (
                 // Skeleton rows while loading
-                Array.from({ length: SKELETON_ROWS }).map((_, i) => (
-                  <TableRow key={i} className="border-b border-border/40">
+                Array.from({ length: 15 }).map((_, i) => (
+                  <TableRow key={i} className="border-b border-border/40 hover:bg-transparent">
                     <TableCell>
                       <Skeleton className="h-5 w-16" />
                     </TableCell>
@@ -284,7 +284,7 @@ export default function AlertsPage() {
                       <Skeleton className="h-5 w-24" />
                     </TableCell>
                     <TableCell>
-                      <Skeleton className="h-7 w-24" />
+                      <Skeleton className="h-8 w-24" />
                     </TableCell>
                   </TableRow>
                 ))
