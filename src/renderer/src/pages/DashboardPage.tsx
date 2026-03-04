@@ -92,13 +92,14 @@ export default function DashboardPage() {
   }, [lastUpdated, reportLastUpdated])
 
   const summary = useMemo(() => {
-    if (!services) return { total: 0, healthy: 0, degraded: 0, critical: 0 }
+    if (!services) return { total: 0, healthy: 0, degraded: 0, critical: 0, restarting: 0 }
 
     return {
       total: services.length,
       healthy: services.filter((s) => s.status === 'healthy').length,
       degraded: services.filter((s) => s.status === 'degraded').length,
-      critical: services.filter((s) => s.status === 'critical' || s.status === 'down').length
+      critical: services.filter((s) => s.status === 'critical' || s.status === 'down').length,
+      restarting: services.filter((s) => s.status === 'restarting').length
     }
   }, [services])
 
@@ -126,11 +127,12 @@ export default function DashboardPage() {
           const order = {
             critical: 0,
             down: 0,
-            degraded: 1,
-            healthy: 2
+            restarting: 1,
+            degraded: 2,
+            healthy: 3
           }
 
-          return order[a.status] - order[b.status]
+          return (order[a.status] ?? 99) - (order[b.status] ?? 99)
         }
 
         default:
@@ -162,9 +164,10 @@ export default function DashboardPage() {
       ) : (
         <>
           {/* SUMMARY CARDS */}
-          <div className="grid gap-2 grid-cols-2 lg:grid-cols-4">
+          <div className="grid gap-2 grid-cols-2 md:grid-cols-3 lg:grid-cols-5">
             <SummaryCard title="Total" value={summary.total} icon={Activity} />
             <SummaryCard title="Healthy" value={summary.healthy} icon={CheckCircle} color="text-emerald-500" />
+            <SummaryCard title="Restarting" value={summary.restarting} icon={RefreshCw} color="text-blue-500" />
             <SummaryCard title="Degraded" value={summary.degraded} icon={AlertTriangle} color="text-amber-500" />
             <SummaryCard title="Critical / Down" value={summary.critical} icon={XCircle} color="text-red-500" />
           </div>

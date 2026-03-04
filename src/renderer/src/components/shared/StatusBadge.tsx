@@ -23,6 +23,10 @@ export function StatusBadge({ status, className }: { status: ServiceStatus; clas
       colorClass = 'bg-gray-500/10 text-gray-600 dark:text-gray-400'
       dotClass = 'bg-gray-500'
       break
+    case 'restarting':
+      colorClass = 'bg-blue-500/10 text-blue-600 dark:text-blue-400'
+      dotClass = 'bg-blue-500 animate-pulse'
+      break
   }
 
   return (

@@ -89,6 +89,22 @@ app.get('/api/alerts/active-count', (_req, res) => {
   res.json({ count: mock.getActiveAlertCount() })
 })
 
+app.get('/api/audit-logs', (req, res) => {
+  const { search, page, limit, timeRange } = req.query
+  const {
+    items,
+    total,
+    page: p,
+    limit: l
+  } = mock.queryAuditLogs({
+    search: search as string | undefined,
+    page: page ? parseInt(page as string, 10) : undefined,
+    limit: limit ? parseInt(limit as string, 10) : undefined,
+    timeRange: timeRange ? parseInt(timeRange as string, 10) : undefined
+  })
+  res.json({ items, total, page: p, limit: l })
+})
+
 app.post('/api/alerts/:id/acknowledge', (req, res) => {
   const a = mock.acknowledgeAlert(req.params.id)
   if (!a) {

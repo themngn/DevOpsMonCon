@@ -1,6 +1,6 @@
 // Auto-generated shared types for renderer
 
-export type ServiceStatus = 'healthy' | 'degraded' | 'critical' | 'down'
+export type ServiceStatus = 'healthy' | 'degraded' | 'critical' | 'down' | 'restarting'
 export interface Service {
   id: string
   name: string
@@ -43,6 +43,15 @@ export interface LogEntry {
   level: LogLevel
   message: string
   timestamp: number | string
+}
+
+export interface AuditLogEntry {
+  id: string
+  timestamp: number | string
+  user: string
+  action: string
+  target: string
+  details: string
 }
 
 export interface PaginatedResponse<T> {
