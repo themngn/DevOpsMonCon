@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useServer } from '../contexts/ServerProvider'
 import { storage } from '../utils/storage'
 import { ServerEntry } from '../types'
-import { Plus, Server as ServerIcon } from 'lucide-react'
+import { Plus, Server as ServerIcon, Loader2 } from 'lucide-react'
 
 export default function ServerSelectPage() {
   const navigate = useNavigate()
@@ -14,10 +14,44 @@ export default function ServerSelectPage() {
   const [name, setName] = useState('')
   const [url, setUrl] = useState('')
   const [error, setError] = useState('')
+  const [connectingId, setConnectingId] = useState<string | null>(null)
 
-  const handleConnect = (server: ServerEntry) => {
-    connect(server)
-    navigate('/')
+  const handleConnect = async (server: ServerEntry) => {
+    setConnectingId(server.id)
+    setError('')
+
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), 3000)
+
+    try {
+      const baseUrl = server.url.replace(/\/$/, '')
+      // Спроба отримати статус сервера для перевірки доступності
+      const response = await fetch(`${baseUrl}/api/status`, {
+        signal: controller.signal,
+        cache: 'no-store'
+      })
+
+      clearTimeout(timeoutId)
+
+      if (!response.ok) {
+        throw new Error(`Server returned status ${response.status}`)
+      }
+
+      // Якщо успішно, підключаємось
+      connect(server)
+      navigate('/')
+    } catch (err: any) {
+      clearTimeout(timeoutId)
+      console.error('Connection failed:', err)
+
+      if (err.name === 'AbortError') {
+        setError(`Connection to "${server.name}" timed out after 3 seconds.`)
+      } else {
+        setError(`Could not connect to "${server.name}": ${err.message}. Make sure the URL is correct and the server is running.`)
+      }
+    } finally {
+      setConnectingId(null)
+    }
   }
 
   const handleAddServer = (e: React.FormEvent) => {
@@ -77,9 +111,17 @@ export default function ServerSelectPage() {
                   </div>
                   <button
                     onClick={() => handleConnect(server)}
-                    className="px-3 py-1.5 text-sm font-medium bg-primary text-primary-foreground rounded-md hover:bg-primary/90"
+                    disabled={connectingId !== null}
+                    className="px-3 py-1.5 text-sm font-medium bg-primary text-primary-foreground rounded-md hover:bg-primary/90 disabled:opacity-50 flex items-center gap-2 min-w-[90px] justify-center"
                   >
-                    Connect
+                    {connectingId === server.id ? (
+                      <>
+                        <Loader2 className="w-3 h-3 animate-spin" />
+                        <span className="text-xs">Connecting</span>
+                      </>
+                    ) : (
+                      'Connect'
+                    )}
                   </button>
                 </div>
               ))}
