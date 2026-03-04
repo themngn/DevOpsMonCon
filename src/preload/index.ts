@@ -25,10 +25,14 @@ const api = {
 
   // Event listeners
   onAlertReceived: (callback: (alert: any) => void) => {
-    ipcRenderer.on('alert-received', (_, alert) => callback(alert))
+    const listener = (_: any, alert: any) => callback(alert)
+    ipcRenderer.on('alert-received', listener)
+    return () => ipcRenderer.removeListener('alert-received', listener)
   },
   onNavigate: (callback: (route: string) => void) => {
-    ipcRenderer.on('navigate', (_, route) => callback(route))
+    const listener = (_: any, route: string) => callback(route)
+    ipcRenderer.on('navigate', listener)
+    return () => ipcRenderer.removeListener('navigate', listener)
   }
 }
 

@@ -1,11 +1,13 @@
 import { app, shell, BrowserWindow, ipcMain } from 'electron'
 import path, { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
-import { createTray, destroyTray } from './tray'
+import { createTray, destroyTray, updateTrayStatus } from './tray'
 
 // start built-in mock API server for development/testing
 import { startMockServer } from './mock-server'
 import { setupIPC } from './ipc-handlers'
+import { mockEvents, Alert, getStatus, getActiveAlertCount } from './mock-data'
+import { NotificationManager } from './notifications'
 
 function createWindow(): BrowserWindow {
   // Create the browser window.
@@ -83,6 +85,32 @@ app.whenReady().then(() => {
   setupIPC(mainWindow)
   // Create Tray
   createTray(mainWindow)
+
+  // Function to sync tray state from mock data
+  const syncTray = () => {
+    const status = getStatus()
+    const activeAlerts = getActiveAlertCount()
+    const tooltip = `DevOps Monitor | ${status.healthy}/${status.total} healthy`
+    updateTrayStatus(status.overall, mainWindow, tooltip, activeAlerts)
+  }
+
+  // Periodic sync every 10 seconds (as requested by user)
+  const traySyncInterval = setInterval(syncTray, 10000)
+
+  // Listen for new alerts from mock data and trigger notifications
+  mockEvents.on('new-alert', (alert: Alert) => {
+    // Update tray immediately when alert happens
+    syncTray()
+    
+    if (alert.severity === 'critical' || alert.severity === 'warning') {
+      const emoji = alert.severity === 'critical' ? '🚨' : '⚠️'
+      NotificationManager.send(
+        `${emoji} Alert: ${alert.serviceName}`,
+        alert.message,
+        mainWindow
+      )
+    }
+  })
 
   app.on('activate', function () {
     // On macOS it's common to re-create a window in the app when the

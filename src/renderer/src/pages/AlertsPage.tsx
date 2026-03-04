@@ -43,7 +43,7 @@ const SEVERITY_OPTIONS = [
 
 const STATUS_OPTIONS = [
   { label: 'All Statuses', value: ALL },
-  { label: 'New', value: 'active' },
+  { label: 'Active', value: 'active' },
   { label: 'Acknowledged', value: 'acknowledged' }
 ]
 
@@ -72,7 +72,7 @@ const statusParam = (v: string): string | undefined => {
 
 export default function AlertsPage() {
   const { pollingInterval, autoRefresh } = useSettings()
-  const { refreshKey, reportLastUpdated } = useRefresh()
+  const { refreshKey, triggerRefresh, reportLastUpdated } = useRefresh()
   const [alerts, setAlerts] = useState<AlertState[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -138,10 +138,12 @@ export default function AlertsPage() {
       prev.map((a, i) => (i === index ? { ...a, isLoading: true, rowError: undefined } : a))
     )
     try {
-      const updated = await acknowledgeAlert(alertId)
+      await acknowledgeAlert(alertId)
+      triggerRefresh() // Update tray count and other global status
+      // We still update local row state for immediate feedback
       setAlerts((prev) =>
         prev.map((a, i) =>
-          i === index ? { ...updated, isLoading: false, rowError: undefined } : a
+          i === index ? { ...a, status: 'acknowledged', isLoading: false, rowError: undefined } : a
         )
       )
     } catch (err) {
@@ -178,7 +180,7 @@ export default function AlertsPage() {
       <div className="shrink-0">
         <h1 className="text-3xl font-bold tracking-tight">Alerts</h1>
         <p className="text-muted-foreground mt-1 text-sm">
-          New alerts across all monitored services
+          Active alerts across all monitored services
         </p>
       </div>
 
@@ -303,7 +305,7 @@ export default function AlertsPage() {
                         {alert.status === 'active' ? (
                           <>
                             <AlertCircle className="h-3 w-3" />
-                            New
+                            Active
                           </>
                         ) : (
                           <>

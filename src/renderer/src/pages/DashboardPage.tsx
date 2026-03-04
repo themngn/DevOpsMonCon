@@ -141,23 +141,6 @@ export default function DashboardPage() {
     return result
   }, [services, search, sortBy])
 
-  //tray update
-  useEffect(() => {
-    if (!services) return
-
-    const hasCritical = services.some((s) => s.status === 'critical' || s.status === 'down')
-    const hasDegraded = services.some((s) => s.status === 'degraded')
-    const alertsCount = services.filter(
-      (s) => s.status === 'critical' || s.status === 'down'
-    ).length
-
-    let trayStatus: 'green' | 'yellow' | 'red' = 'green'
-    if (hasCritical) trayStatus = 'red'
-    else if (hasDegraded) trayStatus = 'yellow'
-
-    window.api?.updateTrayStatus?.(trayStatus, `Services: ${services.length}`, alertsCount)
-  }, [services])
-
   return (
     <div className="space-y-6">
       {isLoading ? (

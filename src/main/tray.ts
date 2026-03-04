@@ -6,13 +6,14 @@ let tray: Tray | null = null
 export function createTray(mainWindow: BrowserWindow): Tray {
   const iconPath = path.join(__dirname, '../../resources/tray-green.ico')
   tray = new Tray(nativeImage.createFromPath(iconPath))
-  tray.setToolTip('DevOpsMonCon')
+  tray.setToolTip('DevOps Monitor')
 
   updateTrayMenu(mainWindow, 0)
 
   tray.on('double-click', () => {
     mainWindow.show()
     mainWindow.focus()
+    mainWindow.webContents.send('navigate', '/')
   })
 
   return tray

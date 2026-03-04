@@ -34,7 +34,7 @@ export default function Header() {
       case '/':
         return 'System Dashboard'
       case '/alerts':
-        return 'New Alerts'
+        return 'Alerts'
       case '/logs':
         return 'System Logs'
       case '/settings':
