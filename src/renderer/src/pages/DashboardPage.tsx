@@ -4,10 +4,10 @@ import { SummaryCardSkeleton, ServiceCardSkeleton } from '../components/shared/L
 
 import { useState, useMemo, useEffect } from 'react'
 import { useSettings } from '../hooks/useSettings'
+import { useRefresh } from '../contexts/RefreshProvider'
 
 import * as api from '../services/api'
 import { usePolling } from '../hooks/usePolling'
-import { useRelativeTime } from '../hooks/useRelativeTime'
 
 import ServiceCard from '../components/ServiceCard'
 
@@ -37,6 +37,7 @@ function SummaryCard({
 
 export default function DashboardPage() {
   const { pollingInterval, autoRefresh } = useSettings()
+  const { refreshKey, reportLastUpdated } = useRefresh()
 
   const [period, setPeriod] = useState(5)
   const [search, setSearch] = useState('')
@@ -54,7 +55,15 @@ export default function DashboardPage() {
     refresh()
   }, [period, refresh])
 
-  const relativeLastUpdated = useRelativeTime(lastUpdated)
+  // Trigger a manual refresh from the Header button
+  useEffect(() => {
+    if (refreshKey > 0) refresh()
+  }, [refreshKey]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Report fetch time to global context so the Header can display it
+  useEffect(() => {
+    if (lastUpdated) reportLastUpdated(lastUpdated)
+  }, [lastUpdated, reportLastUpdated])
   const summary = useMemo(() => {
     if (!services) return { total: 0, healthy: 0, degraded: 0, critical: 0 }
 
@@ -185,8 +194,7 @@ export default function DashboardPage() {
               </select>
             </div>
 
-            {/* LAST UPDATED */}
-            <div className="text-xs text-muted-foreground">Last updated: {relativeLastUpdated}</div>
+
           </div>
 
           {/* ERROR */}

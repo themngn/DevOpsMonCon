@@ -1,4 +1,4 @@
-﻿import { useState, useCallback, useEffect } from 'react'
+﻿import { useState, useCallback, useEffect, useRef } from 'react'
 import { formatDistanceToNow } from 'date-fns'
 import { AlertCircle, CheckCircle, Loader2, ShieldAlert, Filter, Clock } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -16,6 +16,7 @@ import { Pagination } from '../components/Pagination'
 import { ErrorState } from '../components/ErrorState'
 import { EmptyState } from '../components/EmptyState'
 import { useSettings } from '@/hooks/useSettings'
+import { useRefresh } from '@/contexts/RefreshProvider'
 import { getAlerts, acknowledgeAlert } from '@/services/api'
 import type { Alert, AlertSeverity, AlertStatus } from '@/types/index'
 
@@ -68,6 +69,7 @@ const toParam = (v: string) => {
 
 export default function AlertsPage() {
   const { pollingInterval, autoRefresh } = useSettings()
+  const { refreshKey, reportLastUpdated } = useRefresh()
   const [alerts, setAlerts] = useState<AlertState[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -92,13 +94,14 @@ export default function AlertsPage() {
       })
       setAlerts(result.items.map((a) => ({ ...a, isLoading: false, rowError: undefined })))
       setTotal(result.total)
+      reportLastUpdated(new Date())
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch alerts')
       setAlerts([])
     } finally {
       setLoading(false)
     }
-  }, [filters, page])
+  }, [filters, page, reportLastUpdated])
 
   // Re-fetch immediately whenever filters or page change
   useEffect(() => {
@@ -111,6 +114,13 @@ export default function AlertsPage() {
     const id = setInterval(fetchAlerts, pollingInterval)
     return () => clearInterval(id)
   }, [autoRefresh, pollingInterval, fetchAlerts])
+
+  // Trigger a manual refresh from the Header button
+  const isFirstRender = useRef(true)
+  useEffect(() => {
+    if (isFirstRender.current) { isFirstRender.current = false; return }
+    fetchAlerts()
+  }, [refreshKey]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleFilterChange = (key: keyof Filters, value: string) => {
     setPage(1)

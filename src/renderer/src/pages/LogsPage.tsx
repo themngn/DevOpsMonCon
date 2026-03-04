@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
+import { useRefresh } from '../contexts/RefreshProvider'
 import { format, fromUnixTime, parseISO, isValid } from 'date-fns'
 import { Search, X, AlertCircle, Info, TriangleAlert, Filter } from 'lucide-react'
 import { getLogs } from '../services/api'
@@ -124,6 +125,7 @@ function SkeletonRows({ count = 5 }: { count?: number }) {
 
 export default function LogsPage() {
   const { pollingInterval, autoRefresh } = useSettings()
+  const { refreshKey, reportLastUpdated } = useRefresh()
 
   // filter state
   const [search, setSearch] = useState('')
@@ -167,6 +169,7 @@ export default function LogsPage() {
           limit: PAGE_SIZE
         })
         setData(result)
+        reportLastUpdated(new Date())
       } catch (err) {
         if (!background) {
           setError(err instanceof Error ? err.message : 'Failed to load logs')
@@ -183,6 +186,14 @@ export default function LogsPage() {
     isBackgroundPoll.current = false
     fetchLogs(false)
   }, [fetchLogs])
+
+  // Trigger a manual refresh from the Header button (skip on first render)
+  const isFirstRender = useRef(true)
+  useEffect(() => {
+    if (isFirstRender.current) { isFirstRender.current = false; return }
+    isBackgroundPoll.current = false
+    fetchLogs(false)
+  }, [refreshKey]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // background polling — must NOT reset scroll
   usePolling(

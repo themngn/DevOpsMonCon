@@ -2,11 +2,15 @@ import { useLocation } from 'react-router-dom'
 import { RefreshCw, Moon, Sun, Monitor } from 'lucide-react'
 import { useSettings } from '../../hooks/useSettings'
 import { useTheme } from '../../contexts/ThemeProvider'
+import { useRefresh } from '../../contexts/RefreshProvider'
+import { useRelativeTime } from '../../hooks/useRelativeTime'
 
 export default function Header() {
   const location = useLocation()
   const { autoRefresh, pollingInterval, updateSettings } = useSettings()
   const { theme, cycleTheme } = useTheme()
+  const { triggerRefresh, lastUpdated } = useRefresh()
+  const relativeLastUpdated = useRelativeTime(lastUpdated)
 
   const getPageTitle = () => {
     switch (location.pathname) {
@@ -34,7 +38,13 @@ export default function Header() {
       <div className="flex justify-start min-w-0">
         <h1 className="text-lg font-semibold truncate">{getPageTitle()}</h1>
       </div>
-      <div />
+      <div className="flex justify-center">
+        {lastUpdated && (
+          <span className="text-xs text-muted-foreground">
+            Updated {relativeLastUpdated}
+          </span>
+        )}
+      </div>
 
       <div className="flex items-center justify-end gap-4 shrink-0">
         {/* Auto Refresh Controls */}
@@ -82,7 +92,7 @@ export default function Header() {
           <button
             className="p-2 hover:bg-muted rounded-full transition-colors"
             title="Refresh now"
-            onClick={() => window.location.reload()} // Placeholder for real refresh
+            onClick={() => triggerRefresh()}
           >
             <RefreshCw className="w-4 h-4" />
           </button>
