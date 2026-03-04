@@ -17,6 +17,7 @@ export interface ConfirmDialogProps {
   description: string
   confirmLabel?: string
   variant?: 'default' | 'destructive'
+  delaySeconds?: number
   onConfirm: () => void | Promise<void>
 }
 
@@ -27,9 +28,28 @@ export function ConfirmDialog({
   description,
   confirmLabel = 'Confirm',
   variant = 'default',
+  delaySeconds = 0,
   onConfirm
 }: ConfirmDialogProps) {
   const [loading, setLoading] = React.useState(false)
+  const [countdown, setCountdown] = React.useState(delaySeconds)
+
+  React.useEffect(() => {
+    if (open && delaySeconds > 0) {
+      setCountdown(delaySeconds)
+      const timer = setInterval(() => {
+        setCountdown((prev) => {
+          if (prev <= 1) {
+            clearInterval(timer)
+            return 0
+          }
+          return prev - 1
+        })
+      }, 1000)
+      return () => clearInterval(timer)
+    }
+    return undefined
+  }, [open, delaySeconds])
 
   const handleConfirm = async () => {
     try {
@@ -40,6 +60,8 @@ export function ConfirmDialog({
       setLoading(false)
     }
   }
+
+  const isButtonDisabled = loading || countdown > 0
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -54,8 +76,13 @@ export function ConfirmDialog({
               Cancel
             </Button>
           </DialogClose>
-          <Button variant={variant} onClick={handleConfirm} disabled={loading}>
-            {loading ? 'Confirming...' : confirmLabel}
+          <Button 
+            variant={variant} 
+            onClick={handleConfirm} 
+            disabled={isButtonDisabled}
+            className="min-w-[100px]"
+          >
+            {loading ? 'Confirming...' : countdown > 0 ? `${confirmLabel} (${countdown}s)` : confirmLabel}
           </Button>
         </DialogFooter>
       </DialogContent>

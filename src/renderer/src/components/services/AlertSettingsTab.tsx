@@ -102,50 +102,52 @@ export function AlertSettingsTab({ serviceId }: { serviceId: string }) {
 
   return (
     <div className="flex flex-col h-full gap-6">
-      <div className="space-y-6 flex-1 min-h-0 overflow-y-auto">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 flex-1 min-h-0 overflow-y-auto pr-2 content-start">
         {metrics.map(({ key, label }) => (
-          <div key={key} className="border rounded-lg p-4 bg-background shadow-sm space-y-4">
-            <h3 className="font-semibold">{label}</h3>
+          <div key={key} className="border rounded-xl p-5 bg-card shadow-sm flex flex-col gap-5">
+            <div className="flex items-center justify-between border-b pb-3">
+              <h3 className="font-bold text-sm">{label}</h3>
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] uppercase font-bold text-muted-foreground">Notify</span>
+                <Switch
+                  id={`${key}-notify`}
+                  checked={settings[key].notify}
+                  onCheckedChange={(c) => handleChange(key, 'notify', c)}
+                  className="scale-75"
+                />
+              </div>
+            </div>
 
-            <div className="flex flex-wrap items-center gap-6">
+            <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor={`${key}-warning`}>Warning Threshold</Label>
+                <Label htmlFor={`${key}-warning`} className="text-[10px] uppercase font-semibold text-muted-foreground">Warning</Label>
                 <Input
                   id={`${key}-warning`}
                   type="number"
                   value={settings[key].warning}
                   onChange={(e) => handleChange(key, 'warning', Number(e.target.value))}
-                  className="w-32"
+                  className="h-9"
                 />
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor={`${key}-critical`}>Critical Threshold</Label>
+                <Label htmlFor={`${key}-critical`} className="text-[10px] uppercase font-semibold text-destructive">Critical</Label>
                 <Input
                   id={`${key}-critical`}
                   type="number"
                   value={settings[key].critical}
                   onChange={(e) => handleChange(key, 'critical', Number(e.target.value))}
-                  className="w-32"
+                  className="h-9 border-destructive/20 focus-visible:ring-destructive"
                 />
-              </div>
-
-              <div className="space-y-2 flex flex-col justify-end h-[68px]">
-                <div className="flex items-center space-x-2">
-                  <Switch
-                    id={`${key}-notify`}
-                    checked={settings[key].notify}
-                    onCheckedChange={(c) => handleChange(key, 'notify', c)}
-                  />
-                  <Label htmlFor={`${key}-notify`}>Notify</Label>
-                </div>
               </div>
             </div>
 
             {errors[key] && (
-              <p className="text-sm border rounded bg-red-50 text-red-600 dark:bg-red-900/20 dark:text-red-400 p-2">
-                {errors[key]}
-              </p>
+              <div className="mt-auto pt-2">
+                <p className="text-[10px] font-medium border border-destructive/20 rounded bg-destructive/5 text-destructive px-2 py-1.5 animate-in fade-in slide-in-from-top-1">
+                  {errors[key]}
+                </p>
+              </div>
             )}
           </div>
         ))}

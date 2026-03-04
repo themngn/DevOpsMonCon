@@ -2,23 +2,34 @@ import { cn } from '../../lib/utils'
 import type { ServiceStatus } from '../../types/index'
 
 export function StatusBadge({ status, className }: { status: ServiceStatus; className?: string }) {
-  const base = 'inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold'
+  const base = 'inline-flex items-center rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase'
   let colorClass = ''
+  let dotClass = ''
 
   switch (status) {
     case 'healthy':
-      colorClass = 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
+      colorClass = 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
+      dotClass = 'bg-emerald-500'
       break
     case 'degraded':
-      colorClass = 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400'
+      colorClass = 'bg-amber-500/10 text-amber-600 dark:text-amber-400'
+      dotClass = 'bg-amber-500'
       break
     case 'critical':
-      colorClass = 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400'
+      colorClass = 'bg-red-500/10 text-red-600 dark:text-red-400'
+      dotClass = 'bg-red-500'
       break
     case 'down':
-      colorClass = 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-400'
+      colorClass = 'bg-gray-500/10 text-gray-600 dark:text-gray-400'
+      dotClass = 'bg-gray-500'
       break
   }
 
-  return <span className={cn(base, colorClass, className)}>{status}</span>
+  return (
+    <span className={cn(base, colorClass, className)}>
+      <span className={cn('mr-1.5 h-1.5 w-1.5 rounded-full', dotClass)} />
+      {status}
+    </span>
+  )
 }
+

@@ -53,17 +53,16 @@ export function Dropdown({ value, options, onChange, icon: Icon, className }: Dr
         type="button"
         onClick={() => setOpen((prev) => !prev)}
         className={cn(
-          'flex items-center gap-2 rounded-lg border border-input bg-transparent px-3 py-1.5 text-sm',
+          'flex items-center gap-2 rounded-md border border-input bg-background px-3 py-1.5 text-xs font-medium',
           'transition-colors hover:bg-muted/50 select-none',
-          'dark:bg-input/30 dark:hover:bg-input/50',
-          'h-9 min-w-[140px]'
+          'h-8 min-w-[130px]'
         )}
       >
-        {Icon && <Icon className="h-4 w-4 text-muted-foreground shrink-0" />}
+        {Icon && <Icon className="h-3.5 w-3.5 text-muted-foreground shrink-0" />}
         <span className="flex-1 text-left truncate">{selected?.label ?? ''}</span>
         <ChevronDown
           className={cn(
-            'h-4 w-4 text-muted-foreground shrink-0 transition-transform duration-150',
+            'h-3.5 w-3.5 text-muted-foreground shrink-0 transition-transform duration-150',
             open && 'rotate-180'
           )}
         />
@@ -74,8 +73,8 @@ export function Dropdown({ value, options, onChange, icon: Icon, className }: Dr
         <div
           className={cn(
             'absolute left-0 top-full z-[9999] mt-1 min-w-full',
-            'rounded-lg border border-border bg-popover text-popover-foreground',
-            'shadow-lg ring-1 ring-foreground/10',
+            'rounded-md border border-border bg-card text-card-foreground',
+            'shadow-lg ring-1 ring-foreground/5',
             'py-1 animate-in fade-in-0 zoom-in-95 duration-100'
           )}
         >
@@ -90,13 +89,13 @@ export function Dropdown({ value, options, onChange, icon: Icon, className }: Dr
                   close()
                 }}
                 className={cn(
-                  'flex w-full items-center gap-2 px-3 py-1.5 text-sm cursor-default',
-                  'transition-colors hover:bg-accent hover:text-accent-foreground',
-                  isActive && 'font-medium'
+                  'flex w-full items-center gap-2 px-3 py-1.5 text-xs cursor-default transition-colors',
+                  'hover:bg-accent hover:text-accent-foreground',
+                  isActive ? 'font-semibold text-primary bg-primary/5' : 'text-foreground/70'
                 )}
               >
                 <span className="flex-1 text-left">{opt.label}</span>
-                {isActive && <Check className="h-4 w-4 shrink-0" />}
+                {isActive && <Check className="h-3 w-3 shrink-0" />}
               </button>
             )
           })}
@@ -105,3 +104,4 @@ export function Dropdown({ value, options, onChange, icon: Icon, className }: Dr
     </div>
   )
 }
+

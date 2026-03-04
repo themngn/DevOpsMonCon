@@ -1,6 +1,16 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { ChevronLeft, Cpu, HardDrive, Clock, Activity, Box } from 'lucide-react'
+import { 
+  ChevronLeft, 
+  Cpu, 
+  HardDrive, 
+  Clock, 
+  Activity, 
+  Box, 
+  Power, 
+  Droplets, 
+  Loader2 
+} from 'lucide-react'
 import { getService, restartService, drainService } from '../services/api'
 import type { Service } from '../types/index'
 import { Button } from '../components/ui/Button'
@@ -12,6 +22,16 @@ import { LogsTab } from '../components/services/LogsTab'
 import { AlertSettingsTab } from '../components/services/AlertSettingsTab'
 import { useSettings } from '../hooks/useSettings'
 import { usePolling } from '../hooks/usePolling'
+
+function formatUptime(seconds: number): string {
+  const d = Math.floor(seconds / 86400)
+  const h = Math.floor((seconds % 86400) / 3600)
+  const m = Math.floor((seconds % 3600) / 60)
+  const s = seconds % 60
+  if (d > 0) return `${d}d ${h}h ${m}m`
+  if (h > 0) return `${h}h ${m}m ${s}s`
+  return `${m}m ${s}s`
+}
 
 export default function ServiceDetailPage() {
   const { id } = useParams<{ id: string }>()
@@ -78,12 +98,17 @@ export default function ServiceDetailPage() {
           <Button variant="ghost" size="icon" onClick={() => navigate('/')}>
             <ChevronLeft className="h-5 w-5" />
           </Button>
-          <h1 className="text-2xl font-bold tracking-tight">{service.name}</h1>
-          <StatusBadge status={service.status} />
-          <span className="text-sm text-muted-foreground mr-2">v{service.version}</span>
-          <span className="text-sm text-muted-foreground">
-            Uptime: {Math.floor(service.uptime / 60)}m
-          </span>
+          <div className="flex flex-col">
+            <div className="flex items-center gap-3">
+              <h1 className="text-2xl font-bold tracking-tight">{service.name}</h1>
+              <StatusBadge status={service.status} />
+            </div>
+            <div className="flex items-center gap-2 text-sm text-muted-foreground mt-1">
+              <span>v{service.version}</span>
+              <span>&middot;</span>
+              <span>Uptime: {formatUptime(service.uptime)}</span>
+            </div>
+          </div>
         </div>
         <div className="flex items-center gap-3">
           {actionStatus && actionStatus.type !== 'indeterminate' && (
@@ -100,13 +125,21 @@ export default function ServiceDetailPage() {
           )}
 
           <Button
-            variant="outline"
-            className="border-amber-500 text-amber-500 hover:bg-amber-500 hover:text-white"
+            variant="warning"
+            size="sm"
+            className="h-8"
             onClick={() => setIsRestartOpen(true)}
           >
+            <Power className="mr-2 h-4 w-4" />
             Restart
           </Button>
-          <Button variant="destructive" onClick={() => setIsDrainOpen(true)}>
+          <Button 
+            variant="destructive" 
+            size="sm" 
+            className="h-8"
+            onClick={() => setIsDrainOpen(true)}
+          >
+            <Droplets className="mr-2 h-4 w-4" />
             Drain
           </Button>
         </div>
@@ -118,6 +151,8 @@ export default function ServiceDetailPage() {
         title={`Restart ${service.name}?`}
         description="This will restart the service and result in ~30s downtime. Continue?"
         confirmLabel="Restart"
+        variant="warning"
+        delaySeconds={3}
         onConfirm={handleRestart}
       />
 
@@ -128,17 +163,16 @@ export default function ServiceDetailPage() {
         description="Stop new connections. Existing complete. Continue?"
         confirmLabel="Drain"
         variant="destructive"
+        delaySeconds={3}
         onConfirm={handleDrain}
       />
 
       {/* Info Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <InfoCard title="CPU" value={`${service.cpu.toFixed(1)}%`} icon={Cpu} />
         <InfoCard title="RAM" value={`${service.ram.toFixed(1)}%`} icon={Activity} />
         <InfoCard title="Disk" value={`${service.disk.toFixed(1)}%`} icon={HardDrive} />
         <InfoCard title="IOPs" value={Math.round(service.iops)} icon={Activity} />
-        <InfoCard title="Uptime" value={`${Math.floor(service.uptime / 60)}m`} icon={Clock} />
-        <InfoCard title="Version" value={`v${service.version}`} icon={Box} />
       </div>
 
       {/* Tabs */}

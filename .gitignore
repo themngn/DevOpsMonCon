@@ -144,3 +144,5 @@ out
 .DS_Store
 .eslintcache
 *.log*
+
+src-old/

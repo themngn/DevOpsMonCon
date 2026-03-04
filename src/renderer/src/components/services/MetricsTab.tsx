@@ -100,15 +100,17 @@ export function MetricsTab({ serviceId }: { serviceId: string }) {
       {/* Selector */}
       <div className="flex items-center gap-2">
         <span className="text-sm font-medium">Time frame:</span>
-        <Input
-          type="number"
-          min="1"
-          max="9999"
-          value={rangeVal}
-          onChange={(e) => setRangeVal(e.target.value)}
-          className="w-24"
-        />
-        <Dropdown options={UNITS} value={unit} onChange={setUnit} />
+        <div className="flex items-center gap-1">
+          <Input
+            type="number"
+            min="1"
+            max="9999"
+            value={rangeVal}
+            onChange={(e) => setRangeVal(e.target.value)}
+            className="h-8 w-16 text-center"
+          />
+          <Dropdown options={UNITS} value={unit} onChange={setUnit} className="h-8" />
+        </div>
       </div>
 
       {/* Grid */}

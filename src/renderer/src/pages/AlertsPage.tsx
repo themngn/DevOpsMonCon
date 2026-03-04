@@ -36,14 +36,14 @@ interface AlertState extends Alert {
 
 const SEVERITY_OPTIONS = [
   { label: 'All', value: ALL },
-  { label: 'Errors only', value: 'critical' },
+  { label: 'Critical', value: 'critical' },
   { label: 'Warnings', value: 'warning' },
   { label: 'Info', value: 'info' }
 ]
 
 const STATUS_OPTIONS = [
   { label: 'All Statuses', value: ALL },
-  { label: 'Active', value: 'active' },
+  { label: 'New', value: 'active' },
   { label: 'Acknowledged', value: 'acknowledged' }
 ]
 
@@ -178,7 +178,7 @@ export default function AlertsPage() {
       <div className="shrink-0">
         <h1 className="text-3xl font-bold tracking-tight">Alerts</h1>
         <p className="text-muted-foreground mt-1 text-sm">
-          Active alerts across all monitored services
+          New alerts across all monitored services
         </p>
       </div>
 
@@ -225,7 +225,7 @@ export default function AlertsPage() {
                 <TableHead className="w-36 py-2.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground/70 sticky top-0 bg-card z-10">
                   Status
                 </TableHead>
-                <TableHead className="w-28 py-2.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground/70 sticky top-0 bg-card z-10">
+                <TableHead className="w-32 py-2.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground/70 sticky top-0 bg-card z-10">
                   Actions
                 </TableHead>
               </TableRow>
@@ -251,7 +251,7 @@ export default function AlertsPage() {
                       <Skeleton className="h-5 w-24" />
                     </TableCell>
                     <TableCell>
-                      <Skeleton className="h-7 w-12" />
+                      <Skeleton className="h-7 w-24" />
                     </TableCell>
                   </TableRow>
                 ))
@@ -303,7 +303,7 @@ export default function AlertsPage() {
                         {alert.status === 'active' ? (
                           <>
                             <AlertCircle className="h-3 w-3" />
-                            Active
+                            New
                           </>
                         ) : (
                           <>
@@ -315,33 +315,36 @@ export default function AlertsPage() {
                     </TableCell>
 
                     {/* Actions */}
-                    <TableCell>
-                      {alert.status === 'active' ? (
-                        <div className="flex flex-col gap-1">
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => handleAcknowledge(alert.id, idx)}
-                            disabled={alert.isLoading}
-                          >
-                            {alert.isLoading ? (
-                              <>
-                                <Loader2 className="h-3 w-3 animate-spin" />
-                                <span>Acking…</span>
-                              </>
-                            ) : (
-                              'Ack'
+                    <TableCell className="w-32">
+                      <div className="flex flex-col justify-center min-h-[32px] w-24">
+                        {alert.status === 'active' ? (
+                          <div className="flex flex-col gap-1">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="h-8 w-full"
+                              onClick={() => handleAcknowledge(alert.id, idx)}
+                              disabled={alert.isLoading}
+                            >
+                              {alert.isLoading ? (
+                                <>
+                                  <Loader2 className="h-3 w-3 animate-spin mr-2" />
+                                  <span className="truncate">Acking…</span>
+                                </>
+                              ) : (
+                                'Ack'
+                              )}
+                            </Button>
+                            {alert.rowError && (
+                              <p className="text-[10px] text-destructive leading-tight absolute -bottom-4 bg-background px-1 border rounded shadow-sm z-20">
+                                {alert.rowError}
+                              </p>
                             )}
-                          </Button>
-                          {alert.rowError && (
-                            <p className="text-xs text-destructive leading-tight">
-                              {alert.rowError}
-                            </p>
-                          )}
-                        </div>
-                      ) : (
-                        <span className="text-xs text-muted-foreground">—</span>
-                      )}
+                          </div>
+                        ) : (
+                          <span className="text-xs text-muted-foreground">—</span>
+                        )}
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))
