@@ -23,6 +23,8 @@ import { AlertSettingsTab } from '../components/services/AlertSettingsTab'
 import { useSettings } from '../hooks/useSettings'
 import { usePolling } from '../hooks/usePolling'
 
+import { ServiceDetailSkeleton } from '../components/shared/LoadingSkeleton'
+
 function formatUptime(seconds: number): string {
   const d = Math.floor(seconds / 86400)
   const h = Math.floor((seconds % 86400) / 3600)
@@ -87,7 +89,7 @@ export default function ServiceDetailPage() {
   }
 
   if (!service) {
-    return <div className="p-8">Loading service details...</div>
+    return <ServiceDetailSkeleton />
   }
 
   return (
