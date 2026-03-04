@@ -1,111 +1,101 @@
 @import "tailwindcss";
-@import "tw-animate-css";
 
-/* 1. Налаштування темної теми для Tailwind v4 */
-@variant dark (&:where(.dark, .dark *));
+@custom-variant dark (&:is(.dark *));
 
-/* 2. Змінні кольорів (Shadcn UI сумісні) */
-:root {
-  --background: 0 0% 100%;
-  --foreground: 222.2 84% 4.9%;
-  --card: 0 0% 100%;
-  --card-foreground: 222.2 84% 4.9%;
-  --popover: 0 0% 100%;
-  --popover-foreground: 222.2 84% 4.9%;
-  --primary: 222.2 47.4% 11.2%;
-  --primary-foreground: 210 40% 98%;
-  --secondary: 210 40% 96.1%;
-  --secondary-foreground: 222.2 47.4% 11.2%;
-  --muted: 210 40% 96.1%;
-  --muted-foreground: 215.4 16.3% 46.9%;
-  --accent: 210 40% 96.1%;
-  --accent-foreground: 222.2 47.4% 11.2%;
-  --destructive: 0 84.2% 60.2%;
-  --destructive-foreground: 210 40% 98%;
-  --border: 214.3 31.8% 91.4%;
-  --input: 214.3 31.8% 91.4%;
-  --ring: 222.2 84% 4.9%;
-  --radius: 0.5rem;
-}
-
-.dark {
-  --background: 222.2 84% 4.9%;
-  --foreground: 210 40% 98%;
-  --card: 222.2 84% 4.9%;
-  --card-foreground: 210 40% 98%;
-  --popover: 222.2 84% 4.9%;
-  --popover-foreground: 210 40% 98%;
-  --primary: 210 40% 98%;
-  --primary-foreground: 222.2 47.4% 11.2%;
-  --secondary: 217.2 32.6% 17.5%;
-  --secondary-foreground: 210 40% 98%;
-  --muted: 217.2 32.6% 17.5%;
-  --muted-foreground: 215 20.2% 65.1%;
-  --accent: 217.2 32.6% 17.5%;
-  --accent-foreground: 210 40% 98%;
-  --destructive: 0 62.8% 30.6%;
-  --destructive-foreground: 210 40% 98%;
-  --border: 217.2 32.6% 17.5%;
-  --input: 217.2 32.6% 17.5%;
-  --ring: 212.7 26.8% 83.9%;
-}
-
-/* 3. Підключення змінних до Tailwind */
 @theme {
-  --color-background: hsl(var(--background));
-  --color-foreground: hsl(var(--foreground));
-  --color-card: hsl(var(--card));
-  --color-card-foreground: hsl(var(--card-foreground));
-  --color-popover: hsl(var(--popover));
-  --color-popover-foreground: hsl(var(--popover-foreground));
-  --color-primary: hsl(var(--primary));
-  --color-primary-foreground: hsl(var(--primary-foreground));
-  --color-secondary: hsl(var(--secondary));
-  --color-secondary-foreground: hsl(var(--secondary-foreground));
-  --color-muted: hsl(var(--muted));
-  --color-muted-foreground: hsl(var(--muted-foreground));
-  --color-accent: hsl(var(--accent));
-  --color-accent-foreground: hsl(var(--accent-foreground));
-  --color-destructive: hsl(var(--destructive));
-  --color-destructive-foreground: hsl(var(--destructive-foreground));
-  --color-border: hsl(var(--border));
-  --color-input: hsl(var(--input));
-  --color-ring: hsl(var(--ring));
-  
-  --radius-lg: var(--radius);
-  --radius-md: calc(var(--radius) - 2px);
-  --radius-sm: calc(var(--radius) - 4px);
+  --color-background: oklch(1 0 0);
+  --color-foreground: oklch(0.145 0.017 285.823);
+  --color-card: oklch(1 0 0);
+  --color-card-foreground: oklch(0.145 0.017 285.823);
+  --color-popover: oklch(1 0 0);
+  --color-popover-foreground: oklch(0.145 0.017 285.823);
+  --color-primary: oklch(0.205 0.042 265.755);
+  --color-primary-foreground: oklch(0.985 0.002 247.839);
+  --color-secondary: oklch(0.965 0.001 286.375);
+  --color-secondary-foreground: oklch(0.205 0.042 265.755);
+  --color-muted: oklch(0.965 0.001 286.375);
+  --color-muted-foreground: oklch(0.556 0.019 285.938);
+  --color-accent: oklch(0.965 0.001 286.375);
+  --color-accent-foreground: oklch(0.205 0.042 265.755);
+  --color-destructive: oklch(0.577 0.245 27.325);
+  --color-destructive-foreground: oklch(0.577 0.245 27.325);
+  --color-border: oklch(0.922 0.004 286.32);
+  --color-input: oklch(0.922 0.004 286.32);
+  --color-ring: oklch(0.708 0.165 254.624);
+  --color-chart-1: oklch(0.55 0.30 250);
+  --color-chart-2: oklch(0.55 0.28 155);
+  --color-chart-3: oklch(0.65 0.25 75);
+  --color-chart-4: oklch(0.55 0.30 320);
+  --color-chart-5: oklch(0.60 0.28 30);
+  --color-sidebar: oklch(0.985 0.002 247.839);
+  --color-sidebar-foreground: oklch(0.145 0.017 285.823);
+  --color-sidebar-primary: oklch(0.205 0.042 265.755);
+  --color-sidebar-primary-foreground: oklch(0.985 0.002 247.839);
+  --color-sidebar-accent: oklch(0.965 0.001 286.375);
+  --color-sidebar-accent-foreground: oklch(0.205 0.042 265.755);
+  --color-sidebar-border: oklch(0.922 0.004 286.32);
+  --color-sidebar-ring: oklch(0.708 0.165 254.624);
+  --radius: 0.625rem;
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji";
+  --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
 }
 
-/* 4. Базові стилі */
-body {
-  @apply bg-background text-foreground;
-  font-feature-settings: "rlig" 1, "calt" 1;
-  display: block; /* Важливо: прибираємо flex центрування */
-  width: 100%;
-  height: 100vh;
-  overflow: hidden; /* Скрол буде всередині AppShell */
+@layer base {
+  .dark {
+    --color-background: oklch(0.145 0.017 285.823);
+    --color-foreground: oklch(0.985 0.002 247.839);
+    --color-card: oklch(0.145 0.017 285.823);
+    --color-card-foreground: oklch(0.985 0.002 247.839);
+    --color-popover: oklch(0.145 0.017 285.823);
+    --color-popover-foreground: oklch(0.985 0.002 247.839);
+    --color-primary: oklch(0.985 0.002 247.839);
+    --color-primary-foreground: oklch(0.205 0.042 265.755);
+    --color-secondary: oklch(0.269 0.015 285.886);
+    --color-secondary-foreground: oklch(0.985 0.002 247.839);
+    --color-muted: oklch(0.269 0.015 285.886);
+    --color-muted-foreground: oklch(0.708 0.007 286.286);
+    --color-accent: oklch(0.269 0.015 285.886);
+    --color-accent-foreground: oklch(0.985 0.002 247.839);
+    --color-destructive: oklch(0.704 0.191 22.216);
+    --color-destructive-foreground: oklch(0.704 0.191 22.216);
+    --color-border: oklch(0.269 0.015 285.886);
+    --color-input: oklch(0.269 0.015 285.886);
+    --color-ring: oklch(0.551 0.183 259.092);
+    --color-chart-1: oklch(0.75 0.28 250);
+    --color-chart-2: oklch(0.78 0.28 155);
+    --color-chart-3: oklch(0.83 0.25 75);
+    --color-chart-4: oklch(0.75 0.30 320);
+    --color-chart-5: oklch(0.78 0.28 30);
+    --color-sidebar: oklch(0.178 0.02 285.823);
+    --color-sidebar-foreground: oklch(0.985 0.002 247.839);
+    --color-sidebar-primary: oklch(0.488 0.243 264.376);
+    --color-sidebar-primary-foreground: oklch(0.985 0.002 247.839);
+    --color-sidebar-accent: oklch(0.269 0.015 285.886);
+    --color-sidebar-accent-foreground: oklch(0.985 0.002 247.839);
+    --color-sidebar-border: oklch(0.269 0.015 285.886);
+    --color-sidebar-ring: oklch(0.551 0.183 259.092);
+  }
 }
 
-/* 5. Custom Scrollbar Styling */
-::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-family: var(--font-sans);
+  }
 }
 
-::-webkit-scrollbar-track {
-  background: transparent;
+@keyframes drain-progress {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
 }
 
-::-webkit-scrollbar-thumb {
-  background: hsl(var(--border));
-  border-radius: 9999px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: hsl(var(--muted-foreground));
-}
-
-::-webkit-scrollbar-corner {
-  background: transparent;
+.animate-drain-progress {
+  animation: drain-progress 1.5s ease-in-out infinite;
 }
