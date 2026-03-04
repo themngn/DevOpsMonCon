@@ -407,7 +407,20 @@ export function initMockData(): void {
     const segEnd = now - seg.endAge * 1000
     for (let t = segStart; t <= segEnd; t += seg.intervalMs) {
       if (Math.random() > 0.35) continue
-      const service = randomChoice(state.services)
+      let service = randomChoice(state.services)
+
+      // Reduce historical alerts for metrics and payment services
+      if (
+        (service.name === 'metrics-collector' || service.name === 'payment-processor') &&
+        Math.random() > 0.2
+      ) {
+        service = randomChoice(
+          state.services.filter(
+            (s) => s.name !== 'metrics-collector' && s.name !== 'payment-processor'
+          )
+        )
+      }
+
       const severity: AlertSeverity = randomChoice(['critical', 'warning', 'warning', 'info'])
       const ageSec = (now - t) / 1000
       const status: AlertStatus =
@@ -574,6 +587,14 @@ function tick(): void {
       down: 3
     }
     if (statusOrder[svc.status] > statusOrder[prevStatus]) {
+      // Reduce alerts for metrics and payment services
+      if (
+        (svc.name === 'metrics-collector' || svc.name === 'payment-processor') &&
+        Math.random() > 0.2
+      ) {
+        return
+      }
+
       const severity: AlertSeverity =
         svc.status === 'critical' || svc.status === 'down' ? 'critical' : 'warning'
       const newAlert: Alert = {
