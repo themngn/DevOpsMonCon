@@ -14,8 +14,8 @@ export interface RendererAPI {
   saveSettings(settings: AppSettings): Promise<boolean>
 
   // Tray/Notifications
-  updateTrayStatus(status: string): Promise<boolean>
-  sendNotification(title: string, options?: any): Promise<boolean>
+  updateTrayStatus(status: 'green' | 'yellow' | 'red', tooltip: string, alertsCount: number): Promise<boolean>
+  sendNotification(title: string, body: string): Promise<boolean>
 
   // Event listeners
   onAlertReceived(callback: (alert: any) => void): void

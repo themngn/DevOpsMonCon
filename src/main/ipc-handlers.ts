@@ -1,9 +1,12 @@
+import { BrowserWindow } from 'electron'
 import { ipcMain } from 'electron'
 import { getStore } from './store'
 import type { AppSettings } from '../renderer/src/types'
+import { NotificationManager } from './notifications'
+import { updateTrayStatus } from './tray'
 
 // API port
-export function setupIPC() {
+export function setupIPC(mainWindow: BrowserWindow) {
   // Get the mock API server port
   ipcMain.handle('getApiPort', () => {
     return 3001 // mock server runs on this port
@@ -34,17 +37,15 @@ export function setupIPC() {
   })
 
   // Tray status update
-  ipcMain.handle('updateTrayStatus', (_, status: string) => {
-    // TODO: implement tray status update when tray is added
-    console.log('updateTrayStatus:', status)
-    return true
-  })
-
+  ipcMain.on(
+    'updateTrayStatus',
+    (_, status: 'green' | 'yellow' | 'red', tooltip: string, alertsCount: number) => {
+      updateTrayStatus(status, mainWindow, tooltip, alertsCount)
+    }
+  )
   // Notifications
-  ipcMain.handle('sendNotification', (_, title: string, options?: any) => {
-    // TODO: implement native notifications
-    console.log('sendNotification:', title, options)
-    return true
+  ipcMain.on('sendNotification', (_, title: string, body: string) => {
+    NotificationManager.send(title, body, mainWindow)
   })
 
   // Event listeners are registered but will be triggered from main process
