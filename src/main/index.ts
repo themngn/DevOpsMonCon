@@ -10,6 +10,7 @@ import { setupIPC } from './ipc-handlers'
 function createWindow(): BrowserWindow {
   // Create the browser window.
   const mainWindow = new BrowserWindow({
+    title: 'DevOps Monitor',
     width: 1280,
     height: 800,
     minWidth: 900,

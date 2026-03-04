@@ -6,15 +6,18 @@ import App from './App'
 import { ThemeProvider } from './contexts/ThemeProvider'
 import { SettingsProvider } from './contexts/SettingsProvider'
 import { ServerProvider } from './contexts/ServerProvider'
+import { TooltipProvider } from './components/ui/Tooltip'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <ThemeProvider>
-      <SettingsProvider>
-        <ServerProvider>
-          <App />
-        </ServerProvider>
-      </SettingsProvider>
+      <TooltipProvider>
+        <SettingsProvider>
+          <ServerProvider>
+            <App />
+          </ServerProvider>
+        </SettingsProvider>
+      </TooltipProvider>
     </ThemeProvider>
   </StrictMode>
 )

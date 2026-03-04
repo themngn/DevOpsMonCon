@@ -10,6 +10,7 @@ import * as api from '../services/api'
 import { usePolling } from '../hooks/usePolling'
 
 import ServiceCard from '../components/ServiceCard'
+import { Dropdown } from '../components/ui/Dropdown'
 import { 
   Activity, 
   CheckCircle, 
@@ -20,6 +21,22 @@ import {
   Timer,
   RefreshCw
 } from 'lucide-react'
+
+const SORT_OPTIONS = [
+  { label: 'By Status', value: 'status' },
+  { label: 'By Name', value: 'name' },
+  { label: 'By CPU', value: 'cpu' },
+  { label: 'By RAM', value: 'ram' }
+]
+
+const PERIOD_OPTIONS = [
+  { label: 'Avg 1 min', value: '1' },
+  { label: 'Avg 5 min', value: '5' },
+  { label: 'Avg 10 min', value: '10' },
+  { label: 'Avg 15 min', value: '15' },
+  { label: 'Avg 30 min', value: '30' },
+  { label: 'Avg 60 min', value: '60' }
+]
 
 function SummaryCard({
   title,
@@ -33,11 +50,11 @@ function SummaryCard({
   color?: string
 }) {
   return (
-    <div className="p-4 rounded-xl border bg-card shadow-sm flex items-center gap-3">
-      <Icon className={`h-5 w-5 ${color}`} />
-      <div>
-        <div className="text-2xl font-bold">{value}</div>
-        <div className="text-xs text-muted-foreground">{title}</div>
+    <div className="p-3 rounded-xl border bg-card shadow-sm flex items-center gap-2.5 min-w-0">
+      <Icon className={`h-4 w-4 ${color} shrink-0`} />
+      <div className="min-w-0 flex-1">
+        <div className="text-xl font-bold truncate leading-none">{value}</div>
+        <div className="text-[10px] text-muted-foreground truncate uppercase tracking-wider font-semibold mt-1">{title}</div>
       </div>
     </div>
   )
@@ -146,7 +163,7 @@ export default function DashboardPage() {
       {isLoading ? (
         <>
           {/* SUMMARY SKELETON */}
-          <div className="grid gap-3 grid-cols-2 lg:grid-cols-4">
+          <div className="grid gap-2 grid-cols-2 lg:grid-cols-4">
             {Array.from({ length: 4 }).map((_, i) => (
               <SummaryCardSkeleton key={i} />
             ))}
@@ -162,7 +179,7 @@ export default function DashboardPage() {
       ) : (
         <>
           {/* SUMMARY CARDS */}
-          <div className="grid gap-3 grid-cols-2 lg:grid-cols-4">
+          <div className="grid gap-2 grid-cols-2 lg:grid-cols-4">
             <SummaryCard title="Total" value={summary.total} icon={Activity} />
             <SummaryCard title="Healthy" value={summary.healthy} icon={CheckCircle} color="text-emerald-500" />
             <SummaryCard title="Degraded" value={summary.degraded} icon={AlertTriangle} color="text-amber-500" />
@@ -198,34 +215,20 @@ export default function DashboardPage() {
             </div>
 
             <div className="flex items-center gap-2">
-              <div className="flex items-center gap-1.5 px-3 py-1.5 border rounded-md bg-background">
-                <ArrowUpDown className="h-4 w-4 text-muted-foreground" />
-                <select
-                  value={sortBy}
-                  onChange={(e) => setSortBy(e.target.value as 'status' | 'name' | 'cpu' | 'ram')}
-                  className="bg-transparent text-sm focus:outline-none"
-                >
-                  <option value="status">By Status</option>
-                  <option value="name">By Name</option>
-                  <option value="cpu">By CPU</option>
-                  <option value="ram">By RAM</option>
-                </select>
-              </div>
-
-              <div className="flex items-center gap-1.5 px-3 py-1.5 border rounded-md bg-background">
-                <Timer className="h-4 w-4 text-muted-foreground" />
-                <select
-                  value={period}
-                  onChange={(e) => setPeriod(Number(e.target.value))}
-                  className="bg-transparent text-sm focus:outline-none"
-                >
-                  {[1, 5, 10, 15, 30, 60].map((p) => (
-                    <option key={p} value={p}>
-                      Avg {p} min
-                    </option>
-                  ))}
-                </select>
-              </div>
+              <Dropdown 
+                value={sortBy}
+                options={SORT_OPTIONS}
+                onChange={(v) => setSortBy(v as any)}
+                icon={ArrowUpDown}
+                className="min-w-[140px]"
+              />
+              <Dropdown 
+                value={String(period)}
+                options={PERIOD_OPTIONS}
+                onChange={(v) => setPeriod(Number(v))}
+                icon={Timer}
+                className="min-w-[140px]"
+              />
             </div>
           </div>
 
@@ -253,4 +256,5 @@ export default function DashboardPage() {
     </div>
   )
 }
+
 
