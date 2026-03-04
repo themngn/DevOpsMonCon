@@ -98,7 +98,6 @@ app.whenReady().then(() => {
   const traySyncInterval = setInterval(syncTray, 10000)
 
   // Listen for new alerts from mock data and trigger notifications
-<<<<<<< HEAD
   mockEvents.on('new-alert', async (alert: Alert) => {
     // Get latest settings from store (key is 'settings')
     const store = await (await import('./store')).getStore()
@@ -118,14 +117,6 @@ app.whenReady().then(() => {
 
     if (alertSeverity >= threshold) {
       const emoji = alert.severity === 'critical' ? '🚨' : alert.severity === 'warning' ? '⚠️' : 'ℹ️'
-=======
-  mockEvents.on('new-alert', (alert: Alert) => {
-    // Update tray immediately when alert happens
-    syncTray()
-    
-    if (alert.severity === 'critical' || alert.severity === 'warning') {
-      const emoji = alert.severity === 'critical' ? '🚨' : '⚠️'
->>>>>>> d413d0fc0946556693821dc1125f939d36e6caf6
       NotificationManager.send(
         `${emoji} Alert: ${alert.serviceName}`,
         alert.message,
