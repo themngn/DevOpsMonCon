@@ -10,10 +10,13 @@ import { ConfirmDialog } from '../components/shared/ConfirmDialog'
 import { MetricsTab } from '../components/services/MetricsTab'
 import { LogsTab } from '../components/services/LogsTab'
 import { AlertSettingsTab } from '../components/services/AlertSettingsTab'
+import { useSettings } from '../hooks/useSettings'
+import { usePolling } from '../hooks/usePolling'
 
 export default function ServiceDetailPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
+  const { pollingInterval, autoRefresh } = useSettings()
   const [service, setService] = useState<Service | null>(null)
 
   const [isRestartOpen, setIsRestartOpen] = useState(false)
@@ -33,11 +36,11 @@ export default function ServiceDetailPage() {
     }
   }, [id])
 
+  // Initial fetch + settings-aware polling
   useEffect(() => {
     fetchService()
-    const interval = setInterval(fetchService, 5000)
-    return () => clearInterval(interval)
   }, [fetchService])
+  usePolling(fetchService, pollingInterval, { enabled: autoRefresh })
 
   const handleRestart = async () => {
     if (!id) return
