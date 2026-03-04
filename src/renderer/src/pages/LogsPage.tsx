@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
+import { useRefresh } from '../contexts/RefreshProvider'
 import { format, fromUnixTime, parseISO, isValid } from 'date-fns'
 import { Search, X, AlertCircle, Info, TriangleAlert, Filter } from 'lucide-react'
 import { getLogs } from '../services/api'
@@ -9,9 +10,9 @@ import { EmptyState } from '../components/EmptyState'
 import { ErrorState } from '../components/ErrorState'
 import type { LogEntry, PaginatedResponse, LogLevel } from '../types/index'
 import { cn } from '../lib/utils'
-import { Button } from '../../../../components/ui/button'
+import { Button } from '@/components/ui/button'
 import { Dropdown } from '../components/ui/Dropdown'
-import { Skeleton } from '../../../../components/ui/skeleton'
+import { Skeleton } from '@/components/ui/skeleton'
 import {
   Table,
   TableBody,
@@ -19,13 +20,8 @@ import {
   TableHead,
   TableHeader,
   TableRow
-} from '../../../../components/ui/table'
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger
-} from '../../../../components/ui/tooltip'
+} from '@/components/ui/table'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 
 const PAGE_SIZE = 50
 
@@ -51,34 +47,37 @@ function formatTs(ts: number | string): string {
 const LEVEL_OPTIONS = [
   { label: 'All', value: 'all' },
   { label: 'Warnings + Errors', value: 'warn' },
-  { label: 'Errors only', value: 'error' },
+  { label: 'Errors only', value: 'error' }
 ]
 
 const LEVEL_HIERARCHY: Record<string, LogLevel[]> = {
   all: ['INFO', 'WARN', 'ERROR'],
   warn: ['WARN', 'ERROR'],
-  error: ['ERROR'],
+  error: ['ERROR']
 }
 
-const LEVEL_CONFIG: Record<LogLevel, { label: string; dot: string; pill: string; icon: React.ElementType }> = {
+const LEVEL_CONFIG: Record<
+  LogLevel,
+  { label: string; dot: string; pill: string; icon: React.ElementType }
+> = {
   ERROR: {
     label: 'ERROR',
     dot: 'bg-red-500',
     pill: 'bg-red-500/10 text-red-400 ring-1 ring-red-500/25',
-    icon: AlertCircle,
+    icon: AlertCircle
   },
   WARN: {
     label: 'WARN',
     dot: 'bg-yellow-400',
     pill: 'bg-yellow-400/10 text-yellow-400 ring-1 ring-yellow-400/25',
-    icon: TriangleAlert,
+    icon: TriangleAlert
   },
   INFO: {
     label: 'INFO',
     dot: 'bg-blue-400',
     pill: 'bg-blue-400/10 text-blue-400 ring-1 ring-blue-400/25',
-    icon: Info,
-  },
+    icon: Info
+  }
 }
 
 function LevelBadge({ level }: { level: LogLevel }) {
@@ -126,6 +125,7 @@ function SkeletonRows({ count = 5 }: { count?: number }) {
 
 export default function LogsPage() {
   const { pollingInterval, autoRefresh } = useSettings()
+  const { refreshKey, reportLastUpdated } = useRefresh()
 
   // filter state
   const [search, setSearch] = useState('')
@@ -169,6 +169,7 @@ export default function LogsPage() {
           limit: PAGE_SIZE
         })
         setData(result)
+        reportLastUpdated(new Date())
       } catch (err) {
         if (!background) {
           setError(err instanceof Error ? err.message : 'Failed to load logs')
@@ -186,14 +187,22 @@ export default function LogsPage() {
     fetchLogs(false)
   }, [fetchLogs])
 
+  // Trigger a manual refresh from the Header button (skip on first render)
+  const isFirstRender = useRef(true)
+  useEffect(() => {
+    if (isFirstRender.current) { isFirstRender.current = false; return }
+    isBackgroundPoll.current = false
+    fetchLogs(false)
+  }, [refreshKey]) // eslint-disable-line react-hooks/exhaustive-deps
+
   // background polling — must NOT reset scroll
   usePolling(
     () => {
       isBackgroundPoll.current = true
-      fetchLogs(true)
+      return fetchLogs(true)
     },
     pollingInterval,
-    autoRefresh
+    { enabled: autoRefresh }
   )
 
   // ── derived ────────────────────────────────────────────────────────────────
@@ -211,17 +220,17 @@ export default function LogsPage() {
   }
 
   const hasFilters = search !== '' || level !== 'all'
-  const levelLabel = {
-    all: 'All',
-    error: 'Errors only',
-    warn: 'Warnings + Errors',
-  }[level] || 'Unknown'
+  const levelLabel =
+    {
+      all: 'All',
+      error: 'Errors only',
+      warn: 'Warnings + Errors'
+    }[level] || 'Unknown'
 
   // ── render ─────────────────────────────────────────────────────────────────
   return (
     <TooltipProvider>
       <div className="flex flex-col gap-3 h-full min-h-0">
-
         {/* ── Filter bar ── */}
         <div className="flex items-center gap-2 flex-wrap">
           {/* Search with icon */}
@@ -258,13 +267,35 @@ export default function LogsPage() {
               {level !== 'all' && (
                 <span className="inline-flex items-center gap-1 rounded-full border border-border bg-muted/50 px-2.5 py-0.5 text-xs text-muted-foreground">
                   Level: {levelLabel}
-                  <button onClick={() => { setLevel('all'); setPage(1) }} className="hover:text-foreground ml-0.5"><X className="h-2.5 w-2.5" /></button>
+                  <button
+                    onClick={() => {
+                      setLevel('all')
+                      setPage(1)
+                    }}
+                    className="hover:text-foreground ml-0.5"
+                  >
+                    <X className="h-2.5 w-2.5" />
+                  </button>
                 </span>
               )}
               {debouncedSearch && (
                 <span className="inline-flex items-center gap-1 rounded-full border border-border bg-muted/50 px-2.5 py-0.5 text-xs text-muted-foreground max-w-64">
-                  <span className="truncate">Search: &ldquo;{debouncedSearch.length > 16 ? debouncedSearch.slice(0, 16) + '…' : debouncedSearch}&rdquo;</span>
-                  <button onClick={() => { setSearch(''); setPage(1) }} className="hover:text-foreground ml-0.5 shrink-0"><X className="h-2.5 w-2.5" /></button>
+                  <span className="truncate">
+                    Search: &ldquo;
+                    {debouncedSearch.length > 16
+                      ? debouncedSearch.slice(0, 16) + '…'
+                      : debouncedSearch}
+                    &rdquo;
+                  </span>
+                  <button
+                    onClick={() => {
+                      setSearch('')
+                      setPage(1)
+                    }}
+                    className="hover:text-foreground ml-0.5 shrink-0"
+                  >
+                    <X className="h-2.5 w-2.5" />
+                  </button>
                 </span>
               )}
               <button
@@ -302,10 +333,7 @@ export default function LogsPage() {
               ) : error ? (
                 <TableRow className="hover:bg-transparent">
                   <TableCell colSpan={4} className="p-0">
-                    <ErrorState
-                      message="Failed to load logs"
-                      onRetry={() => fetchLogs(false)}
-                    />
+                    <ErrorState message="Failed to load logs" onRetry={() => fetchLogs(false)} />
                   </TableCell>
                 </TableRow>
               ) : logs.length === 0 ? (

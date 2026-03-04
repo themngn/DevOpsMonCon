@@ -52,7 +52,7 @@ export default function ServerSelectPage() {
     setIsTesting(true)
     setError('')
     try {
-      // Намагаємося зробити запит до сервера. 
+      // Намагаємося зробити запит до сервера.
       // Якщо це ваш Express сервер, він має відповідати на GET /
       const res = await fetch(url)
       if (!res.ok) throw new Error(`Status: ${res.status}`)
@@ -81,7 +81,10 @@ export default function ServerSelectPage() {
           ) : (
             <div className="space-y-2">
               {servers.map((server) => (
-                <div key={server.id} className="flex items-center justify-between p-3 border rounded-lg bg-card">
+                <div
+                  key={server.id}
+                  className="flex items-center justify-between p-3 border rounded-lg bg-card"
+                >
                   <div className="flex items-center gap-3 overflow-hidden">
                     <div className="p-2 bg-primary/10 rounded-full">
                       <ServerIcon className="w-4 h-4 text-primary" />
@@ -126,7 +129,11 @@ export default function ServerSelectPage() {
                 className="px-3 py-2 border rounded-md hover:bg-muted disabled:opacity-50"
                 title="Test Connection"
               >
-                {isTesting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Wifi className="w-4 h-4" />}
+                {isTesting ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Wifi className="w-4 h-4" />
+                )}
               </button>
             </div>
           </div>

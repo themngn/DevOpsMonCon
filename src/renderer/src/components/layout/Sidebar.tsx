@@ -9,7 +9,7 @@ import {
   ChevronRight,
   Server
 } from 'lucide-react'
-import { cn } from '../../utils'
+import { cn } from '@/lib/utils'
 import { useServer } from '../../contexts/ServerProvider'
 import { useAlertCount } from '../../hooks/useAlertCount'
 import { storage } from '../../utils/storage'

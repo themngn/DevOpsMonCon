@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { useServer } from './contexts/ServerProvider'
+import { RefreshProvider } from './contexts/RefreshProvider'
 import AppShell from './components/layout/AppShell'
 import ServerSelectPage from './pages/ServerSelectPage'
 import DashboardPage from './pages/DashboardPage'
@@ -48,7 +49,15 @@ function App(): React.JSX.Element {
         <Route path="/login" element={<ServerSelectPage />} />
 
         {/* Protected Routes wrapped in AppShell */}
-        <Route element={<ProtectedRoute><AppShell /></ProtectedRoute>}>
+        <Route
+          element={
+            <ProtectedRoute>
+              <RefreshProvider>
+                <AppShell />
+              </RefreshProvider>
+            </ProtectedRoute>
+          }
+        >
           <Route path="/" element={<DashboardPage />} />
           <Route path="/services" element={<ServicesPage />} />
           <Route path="/services/:id" element={<ServiceDetailPage />} />
