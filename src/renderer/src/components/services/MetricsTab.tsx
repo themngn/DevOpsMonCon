@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { getMetrics } from '../../services/api'
 import type { MetricPoint } from '../../types/index'
 import {
@@ -12,6 +12,8 @@ import {
 } from 'recharts'
 import { Input } from '../ui/Input'
 import { Dropdown } from '../ui/Dropdown'
+import { useSettings } from '../../hooks/useSettings'
+import { usePolling } from '../../hooks/usePolling'
 
 const UNITS = [
   { label: 'Seconds', value: '1' },
@@ -68,28 +70,30 @@ export function MetricsTab({ serviceId }: { serviceId: string }) {
   const [unit, setUnit] = useState('1')
   const [metrics, setMetrics] = useState<MetricPoint[]>([])
   const [loading, setLoading] = useState(true)
+  const { pollingInterval, autoRefresh } = useSettings()
 
-  useEffect(() => {
-    let active = true
-    const fetchData = async () => {
-      setLoading(true)
-      try {
-        const valNum = parseInt(rangeVal)
-        const unitNum = parseInt(unit)
-        const seconds = (isNaN(valNum) ? 30 : valNum) * (isNaN(unitNum) ? 1 : unitNum)
-        const data = await getMetrics(serviceId, seconds)
-        if (active) setMetrics(data)
-      } catch (err) {
-        console.error(err)
-      } finally {
-        if (active) setLoading(false)
-      }
-    }
-    fetchData()
-    return () => {
-      active = false
+  const fetchData = useCallback(async () => {
+    const valNum = parseInt(rangeVal)
+    const unitNum = parseInt(unit)
+    const seconds = (isNaN(valNum) ? 30 : valNum) * (isNaN(unitNum) ? 1 : unitNum)
+    try {
+      const data = await getMetrics(serviceId, seconds)
+      setMetrics(data)
+    } catch (err) {
+      console.error(err)
+    } finally {
+      setLoading(false)
     }
   }, [serviceId, rangeVal, unit])
+
+  // Fetch immediately when range or service changes
+  useEffect(() => {
+    setLoading(true)
+    fetchData()
+  }, [fetchData])
+
+  // Background refresh on polling interval
+  usePolling(fetchData, pollingInterval, { enabled: autoRefresh })
 
   return (
     <div className="flex flex-col h-full gap-4">

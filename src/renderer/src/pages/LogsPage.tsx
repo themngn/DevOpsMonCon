@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useRefresh } from '../contexts/RefreshProvider'
 import { format, fromUnixTime, parseISO, isValid } from 'date-fns'
-import { Search, X, AlertCircle, Info, TriangleAlert, Filter } from 'lucide-react'
+import { Search, X, AlertCircle, Info, TriangleAlert, Filter, Clock } from 'lucide-react'
 import { getLogs } from '../services/api'
 import { useSettings } from '../hooks/useSettings'
 import { usePolling } from '../hooks/usePolling'
@@ -24,6 +24,7 @@ import {
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 
 const PAGE_SIZE = 50
+const ALL = 'all'
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
@@ -43,18 +44,20 @@ function formatTs(ts: number | string): string {
 }
 
 // Severity hierarchy: INFO < WARN < ERROR
-// When filtering by WARN, show WARN + ERROR; when filtering by INFO, show all
 const LEVEL_OPTIONS = [
-  { label: 'All', value: 'all' },
-  { label: 'Warnings + Errors', value: 'warn' },
-  { label: 'Errors only', value: 'error' }
+  { label: 'All', value: ALL },
+  { label: 'Errors only', value: 'ERROR' },
+  { label: 'Warnings', value: 'WARN' },
+  { label: 'Info', value: 'INFO' }
 ]
 
-const LEVEL_HIERARCHY: Record<string, LogLevel[]> = {
-  all: ['INFO', 'WARN', 'ERROR'],
-  warn: ['WARN', 'ERROR'],
-  error: ['ERROR']
-}
+const TIME_RANGE_OPTIONS = [
+  { label: 'All time', value: ALL },
+  { label: 'Last hour', value: '3600' },
+  { label: 'Last 24h', value: '86400' },
+  { label: 'Last 7 days', value: '604800' },
+  { label: 'Last 30 days', value: '2592000' }
+]
 
 const LEVEL_CONFIG: Record<
   LogLevel,
@@ -130,7 +133,8 @@ export default function LogsPage() {
   // filter state
   const [search, setSearch] = useState('')
   const [debouncedSearch, setDebouncedSearch] = useState('')
-  const [level, setLevel] = useState<string>('all')
+  const [level, setLevel] = useState<string>(ALL)
+  const [timeRange, setTimeRange] = useState<string>(ALL)
   const [page, setPage] = useState(1)
 
   // data state
@@ -150,9 +154,14 @@ export default function LogsPage() {
     return () => clearTimeout(id)
   }, [search])
 
-  // reset page on level change
+  // reset page on level or timeRange change
   const handleLevelChange = (val: string) => {
     setLevel(val)
+    setPage(1)
+  }
+
+  const handleTimeRangeChange = (val: string) => {
+    setTimeRange(val)
     setPage(1)
   }
 
@@ -162,9 +171,10 @@ export default function LogsPage() {
       if (!background) setLoading(true)
       setError(null)
       try {
-        // Request all logs, then filter by severity client-side
         const result = await getLogs({
           search: debouncedSearch || undefined,
+          level: level !== ALL ? level : undefined,
+          timeRange: timeRange !== ALL ? parseInt(timeRange) : undefined,
           page,
           limit: PAGE_SIZE
         })
@@ -178,7 +188,7 @@ export default function LogsPage() {
         if (!background) setLoading(false)
       }
     },
-    [level, debouncedSearch, page]
+    [level, timeRange, debouncedSearch, page]
   )
 
   // initial / filter/page driven fetch
@@ -190,7 +200,10 @@ export default function LogsPage() {
   // Trigger a manual refresh from the Header button (skip on first render)
   const isFirstRender = useRef(true)
   useEffect(() => {
-    if (isFirstRender.current) { isFirstRender.current = false; return }
+    if (isFirstRender.current) {
+      isFirstRender.current = false
+      return
+    }
     isBackgroundPoll.current = false
     fetchLogs(false)
   }, [refreshKey]) // eslint-disable-line react-hooks/exhaustive-deps
@@ -208,24 +221,34 @@ export default function LogsPage() {
   // ── derived ────────────────────────────────────────────────────────────────
   const total = data?.total ?? 0
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE))
-  // Client-side filter by severity level
-  const allowedLevels = LEVEL_HIERARCHY[level] || LEVEL_HIERARCHY.all
-  const logs = (data?.items ?? []).filter((log) => allowedLevels.includes(log.level))
+  // Server handles level filtering — use items directly
+  const logs = data?.items ?? []
 
   const clearFilters = () => {
     setSearch('')
     setDebouncedSearch('')
-    setLevel('all')
+    setLevel(ALL)
+    setTimeRange(ALL)
     setPage(1)
   }
 
-  const hasFilters = search !== '' || level !== 'all'
+  const hasFilters = search !== '' || level !== ALL || timeRange !== ALL
   const levelLabel =
     {
       all: 'All',
-      error: 'Errors only',
-      warn: 'Warnings + Errors'
-    }[level] || 'Unknown'
+      ERROR: 'Errors only',
+      WARN: 'Warnings',
+      INFO: 'Info'
+    }[level] || level
+
+  const timeLabel =
+    {
+      all: 'All time',
+      '3600': 'Last hour',
+      '86400': 'Last 24h',
+      '604800': 'Last 7 days',
+      '2592000': 'Last 30 days'
+    }[timeRange] || timeRange
 
   // ── render ─────────────────────────────────────────────────────────────────
   return (
@@ -261,15 +284,37 @@ export default function LogsPage() {
             icon={Filter}
           />
 
+          {/* Time range filter */}
+          <Dropdown
+            value={timeRange}
+            options={TIME_RANGE_OPTIONS}
+            onChange={handleTimeRangeChange}
+            icon={Clock}
+          />
+
           {/* Active filter chips */}
           {hasFilters && (
             <div className="flex items-center gap-1.5 ml-1">
-              {level !== 'all' && (
+              {level !== ALL && (
                 <span className="inline-flex items-center gap-1 rounded-full border border-border bg-muted/50 px-2.5 py-0.5 text-xs text-muted-foreground">
                   Level: {levelLabel}
                   <button
                     onClick={() => {
-                      setLevel('all')
+                      setLevel(ALL)
+                      setPage(1)
+                    }}
+                    className="hover:text-foreground ml-0.5"
+                  >
+                    <X className="h-2.5 w-2.5" />
+                  </button>
+                </span>
+              )}
+              {timeRange !== ALL && (
+                <span className="inline-flex items-center gap-1 rounded-full border border-border bg-muted/50 px-2.5 py-0.5 text-xs text-muted-foreground">
+                  Time: {timeLabel}
+                  <button
+                    onClick={() => {
+                      setTimeRange(ALL)
                       setPage(1)
                     }}
                     className="hover:text-foreground ml-0.5"

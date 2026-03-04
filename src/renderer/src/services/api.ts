@@ -78,13 +78,14 @@ export async function getLogs(opts?: {
 
 export async function getServiceLogs(
   serviceId: string,
-  opts?: { level?: string; search?: string; page?: number; limit?: number }
+  opts?: { level?: string; search?: string; page?: number; limit?: number; timeRange?: number }
 ) {
   const params = new URLSearchParams()
   if (opts?.level) params.append('level', opts.level)
   if (opts?.search) params.append('search', opts.search)
   if (opts?.page) params.append('page', opts.page.toString())
   if (opts?.limit) params.append('limit', opts.limit.toString())
+  if (opts?.timeRange) params.append('timeRange', opts.timeRange.toString())
   const res = await fetch(`${API_BASE()}/api/services/${serviceId}/logs?${params}`)
   if (!res.ok) throw new Error(`Failed to fetch service logs: ${res.statusText}`)
   return res.json() as Promise<PaginatedResponse<LogEntry>>

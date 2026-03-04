@@ -1,31 +1,33 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { getServiceLogs } from '../../services/api'
 import type { LogEntry } from '../../types/index'
 import { ScrollArea } from '../ui/ScrollArea'
 import { cn } from '../../lib/utils'
+import { useSettings } from '../../hooks/useSettings'
+import { usePolling } from '../../hooks/usePolling'
 
 export function LogsTab({ serviceId }: { serviceId: string }) {
   const [logs, setLogs] = useState<LogEntry[]>([])
   const [loading, setLoading] = useState(true)
+  const { pollingInterval, autoRefresh } = useSettings()
 
-  useEffect(() => {
-    let active = true
-    const fetchLogs = async () => {
-      setLoading(true)
-      try {
-        const resp = await getServiceLogs(serviceId, { limit: 30, page: 1 })
-        if (active) setLogs(resp.items || [])
-      } catch (err) {
-        console.error(err)
-      } finally {
-        if (active) setLoading(false)
-      }
-    }
-    fetchLogs()
-    return () => {
-      active = false
+  const fetchLogs = useCallback(async () => {
+    try {
+      const resp = await getServiceLogs(serviceId, { limit: 100, page: 1 })
+      setLogs(resp.items || [])
+    } catch (err) {
+      console.error(err)
+    } finally {
+      setLoading(false)
     }
   }, [serviceId])
+
+  useEffect(() => {
+    setLoading(true)
+    fetchLogs()
+  }, [fetchLogs])
+
+  usePolling(fetchLogs, pollingInterval, { enabled: autoRefresh })
 
   const getBadgeClass = (level: string) => {
     switch (level) {

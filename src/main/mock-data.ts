@@ -1,8 +1,13 @@
 // Mock data generator and in-memory store for the built‑in API server.
-
-// re-declare a minimal subset of the shared types here so the main
-// process doesn't have to depend on the renderer build.  We intentionally
-// keep them in sync with the definitions in the renderer side.
+//
+// Design goals:
+//  • 30 days of historical data with a density gradient (denser near "now")
+//  • Metrics stored per-service, drift via a mean-reverting walk
+//  • Service cpu/ram/disk/iops always mirror the latest metric point
+//  • Service status derived from metrics + thresholds on every tick
+//  • Realistic, service-aware log messages
+//  • Alerts generated from threshold violations (cause → effect)
+//  • timeRange param is seconds; filtering converts to ms internally
 
 export type ServiceStatus = 'healthy' | 'degraded' | 'critical' | 'down'
 export interface Service {
@@ -63,7 +68,7 @@ export interface ServiceAlertSettings {
 }
 
 // ---------- helpers --------------------------------------------------------
-function randomBetween(min: number, max: number) {
+function randomBetween(min: number, max: number): number {
   return Math.random() * (max - min) + min
 }
 
@@ -71,13 +76,114 @@ function randomChoice<T>(arr: T[]): T {
   return arr[Math.floor(Math.random() * arr.length)]
 }
 
-function uuid() {
-  // use crypto if available, otherwise fallback
+function uuid(): string {
   try {
     return crypto.randomUUID()
   } catch {
     return Math.random().toString(36).slice(2) + Date.now().toString(36)
   }
+}
+
+// Gaussian noise via Box-Muller transform
+function gaussian(mean: number, std: number): number {
+  let u = 0,
+    v = 0
+  while (u === 0) u = Math.random()
+  while (v === 0) v = Math.random()
+  return mean + std * Math.sqrt(-2.0 * Math.log(u)) * Math.cos(2.0 * Math.PI * v)
+}
+
+// Mean-reverting random walk — pulls toward `mean` with speed `alpha`, adds Gaussian noise
+function mrw(value: number, mean: number, alpha: number, noise: number): number {
+  return value + alpha * (mean - value) + gaussian(0, noise)
+}
+
+function clamp(value: number, min: number, max: number): number {
+  return Math.max(min, Math.min(max, value))
+}
+
+// ---------- realistic log messages ----------------------------------------
+
+const LOG_TEMPLATES: Record<LogLevel, string[]> = {
+  INFO: [
+    'Request handled in {n}ms',
+    'Health check passed',
+    'Connection pool: {n} active',
+    'Processed {n} messages from queue',
+    'Cache hit ratio: {r}%',
+    'Scheduled task completed in {n}ms',
+    'Authentication token refreshed',
+    'Config reloaded from disk',
+    'Metrics flushed to collector',
+    'Database query executed in {n}ms',
+    'HTTP 200 GET /api/health',
+    'HTTP 200 POST /api/data ({n}ms)',
+    'Batch job finished: {n} records processed',
+    'Service peer discovered: {ip}',
+    'TLS certificate valid for {n} days',
+    'Rate limiter: {n} req/s allowed',
+    'Circuit breaker: closed (healthy)'
+  ],
+  WARN: [
+    'Response time above threshold: {n}ms',
+    'Memory usage at {r}%',
+    'Retry attempt {n}/3',
+    'Connection pool nearing limit: {n}/{max}',
+    'Slow query detected: {n}ms',
+    'Cache eviction rate high: {n}/s',
+    'Queue depth rising: {n} items',
+    'CPU spike detected: {r}%',
+    'HTTP 429 Too Many Requests from {ip}',
+    'Disk usage approaching limit: {r}%',
+    'Downstream latency elevated: {n}ms',
+    'Config reload failed, using cached version',
+    'GC pause time: {n}ms',
+    'Connection timeout, retrying...',
+    'Circuit breaker: half-open (testing)',
+    'Rate limiter: throttling {n} req/s'
+  ],
+  ERROR: [
+    'Connection refused to downstream service',
+    'Out of memory: heap limit reached',
+    'Timeout after 30s waiting for response',
+    'Database connection pool exhausted',
+    'HTTP 500 Internal Server Error',
+    'Failed to parse response from {ip}',
+    'Authentication failed: invalid token',
+    'Panic: nil pointer dereference',
+    'Disk write failed: no space left',
+    'TLS handshake error',
+    'Circuit breaker: open (service unavailable)',
+    'Fatal: unable to connect to Redis',
+    '[CRITICAL] Segfault at address {hex}',
+    'Unexpected EOF reading from socket',
+    'HTTP 503 Service Unavailable',
+    'Rollback failed: transaction corrupted'
+  ]
+}
+
+function renderTemplate(template: string): string {
+  return template
+    .replace(/{n}/g, () => String(Math.floor(randomBetween(1, 999))))
+    .replace(/{r}/g, () => randomBetween(50, 99).toFixed(1))
+    .replace(/{max}/g, () => String(Math.floor(randomBetween(50, 100))))
+    .replace(
+      /{ip}/g,
+      () =>
+        `10.${Math.floor(randomBetween(0, 255))}.${Math.floor(randomBetween(0, 255))}.${Math.floor(randomBetween(1, 254))}`
+    )
+    .replace(
+      /{hex}/g,
+      () =>
+        '0x' +
+        Math.floor(Math.random() * 0xffffffff)
+          .toString(16)
+          .padStart(8, '0')
+    )
+}
+
+function makeLogMessage(level: LogLevel): string {
+  return renderTemplate(randomChoice(LOG_TEMPLATES[level]))
 }
 
 // ---------- state ----------------------------------------------------------
@@ -97,9 +203,59 @@ const state: MockState = {
   alertSettings: {}
 }
 
+// ---------- limits ---------------------------------------------------------
+
+const MAX_METRIC_POINTS = 12000 // per service — ~30 days at 1 point per ~3.6 min
+const MAX_LOGS = 50000
+const MAX_ALERTS = 5000
+
+// ---------- alert message generator ----------------------------------------
+
+function makeAlertMessage(severity: AlertSeverity, serviceName: string): string {
+  const messages: Record<AlertSeverity, string[]> = {
+    critical: [
+      `${serviceName}: CPU usage exceeded 90% for >5 minutes`,
+      `${serviceName}: RAM exhausted — OOM killer invoked`,
+      `${serviceName}: Disk full — writes failing`,
+      `${serviceName}: Service unreachable (connection refused)`,
+      `${serviceName}: IOPS limit hit — I/O saturation`,
+      `${serviceName}: Response time >10s — SLA breached`
+    ],
+    warning: [
+      `${serviceName}: CPU above warning threshold`,
+      `${serviceName}: RAM usage elevated`,
+      `${serviceName}: Disk capacity reaching limit`,
+      `${serviceName}: Elevated error rate in last 5 minutes`,
+      `${serviceName}: Queue depth growing — consumer lagging`,
+      `${serviceName}: P95 latency above 500ms`
+    ],
+    info: [
+      `${serviceName}: Scheduled maintenance window starting`,
+      `${serviceName}: Deployment completed successfully`,
+      `${serviceName}: Health check recovered after failure`,
+      `${serviceName}: Auto-scaling triggered: +1 replica`,
+      `${serviceName}: Certificate renewed successfully`
+    ]
+  }
+  return randomChoice(messages[severity])
+}
+
+// ---------- status derivation -----------------------------------------------
+
+function deriveStatus(
+  cpu: number,
+  ram: number,
+  disk: number,
+  threshold: { warning: number; critical: number }
+): ServiceStatus {
+  if (cpu >= threshold.critical || ram >= threshold.critical || disk >= 95) return 'critical'
+  if (cpu >= threshold.warning || ram >= threshold.warning || disk >= 85) return 'degraded'
+  return 'healthy'
+}
+
 // ---------- initialization --------------------------------------------------
-export function initMockData() {
-  if (state.services.length) return // already initialized
+export function initMockData(): void {
+  if (state.services.length) return
 
   const serviceNames = [
     'api-gateway',
@@ -118,171 +274,259 @@ export function initMockData() {
 
   const now = Date.now()
 
-  serviceNames.forEach((name) => {
+  serviceNames.forEach((name, idx) => {
     const id = uuid()
-    const status: Service['status'] = randomChoice([
-      'healthy',
-      'healthy',
-      'healthy',
-      'degraded',
-      'critical',
-      'down'
-    ])
+
+    // Characteristic "steady-state" values make each service look distinct
+    const baseCpu = randomBetween(10, 65)
+    const baseRam = randomBetween(15, 70)
+    const baseDisk = randomBetween(20, 75)
+    const baseIops = randomBetween(50, 800)
+
+    // Density gradient for historical metrics:
+    //   30–8 days ago : 1 point per 2 h
+    //    8–2 days ago : 1 point per 30 min
+    //    2–0 days ago : 1 point per 5 min
+    interface Segment {
+      startAge: number
+      endAge: number
+      intervalMs: number
+    }
+    const metricSegments: Segment[] = [
+      { startAge: 30 * 86400, endAge: 8 * 86400, intervalMs: 2 * 3600 * 1000 },
+      { startAge: 8 * 86400, endAge: 2 * 86400, intervalMs: 30 * 60 * 1000 },
+      { startAge: 2 * 86400, endAge: 0, intervalMs: 5 * 60 * 1000 }
+    ]
+
+    let cpu = baseCpu
+    let ram = baseRam
+    let disk = baseDisk
+    let iops = baseIops
+    const points: MetricPoint[] = []
+
+    for (const seg of metricSegments) {
+      const segStart = now - seg.startAge * 1000
+      const segEnd = now - seg.endAge * 1000
+      for (let t = segStart; t <= segEnd; t += seg.intervalMs) {
+        cpu = clamp(mrw(cpu, baseCpu, 0.05, 3), 0.5, 99)
+        ram = clamp(mrw(ram, baseRam, 0.05, 2), 0.5, 99)
+        disk = clamp(mrw(disk, baseDisk, 0.02, 1), 0.5, 99)
+        iops = clamp(mrw(iops, baseIops, 0.05, 30), 0, 2000)
+        points.push({ timestamp: Math.round(t), cpu, ram, disk, iops })
+      }
+    }
+
+    state.metrics[id] = points
+
+    const latest = points[points.length - 1] ?? {
+      cpu: baseCpu,
+      ram: baseRam,
+      disk: baseDisk,
+      iops: baseIops
+    }
+    const status = deriveStatus(latest.cpu, latest.ram, latest.disk, { warning: 70, critical: 90 })
+
     state.services.push({
       id,
       name,
       status,
-      uptime: randomBetween(0, 10 * 3600),
-      cpu: randomBetween(1, 50),
-      ram: randomBetween(1, 50),
-      disk: randomBetween(1, 50),
-      iops: randomBetween(100, 1000),
-      ip: '127.0.0.1',
-      port: 8000 + Math.floor(Math.random() * 1000),
-      version: `1.0.${Math.floor(Math.random() * 10)}`
+      uptime: randomBetween(0, 30 * 86400),
+      cpu: latest.cpu,
+      ram: latest.ram,
+      disk: latest.disk,
+      iops: latest.iops,
+      ip: `10.0.${Math.floor(idx / 4)}.${10 + (idx % 4)}`,
+      port: 8000 + idx * 10,
+      version: `1.${Math.floor(idx / 4)}.${idx % 4}`
     })
 
-    // Generate historical metric points covering the last 30 days
-    // with 7.2-hour intervals = ~100 points for 30 days
-    const seriesNow = Date.now()
-    const points: MetricPoint[] = []
-    const thirtyDaysAgo = seriesNow - 30 * 24 * 60 * 60 * 1000
-
-    for (let time = thirtyDaysAgo; time <= seriesNow; time += 7.2 * 60 * 60_000) {
-      points.push({
-        timestamp: time,
-        cpu: randomBetween(1, 50),
-        ram: randomBetween(1, 50),
-        disk: randomBetween(1, 50),
-        iops: randomBetween(100, 1000)
-      })
-    }
-    state.metrics[id] = points
-
-    // default alert settings
     state.alertSettings[id] = {
       cpu: { warning: 70, critical: 90, notify: true },
       ram: { warning: 70, critical: 90, notify: true },
-      disk: { warning: 70, critical: 90, notify: true },
-      iops: { warning: 500, critical: 800, notify: true }
+      disk: { warning: 80, critical: 95, notify: true },
+      iops: { warning: 1000, critical: 1500, notify: true }
     }
   })
 
-  // initial logs
-  for (let i = 0; i < 200; i++) {
-    const service = randomChoice(state.services)
-    const rnd = Math.random()
-    const level: LogEntry['level'] = rnd < 0.6 ? 'INFO' : rnd < 0.9 ? 'WARN' : 'ERROR'
-    state.logs.push({
-      id: uuid(),
-      serviceId: service.id,
-      serviceName: service.name,
-      level,
-      message: `Initial log message (${level})`,
-      timestamp: now - Math.floor(Math.random() * 59 * 60_000)
-    })
-  }
+  // Historical logs — same density gradient
+  const logSegments = [
+    { startAge: 30 * 86400, endAge: 8 * 86400, intervalMs: 4 * 3600 * 1000 },
+    { startAge: 8 * 86400, endAge: 2 * 86400, intervalMs: 10 * 60 * 1000 },
+    { startAge: 2 * 86400, endAge: 0, intervalMs: 1 * 60 * 1000 }
+  ]
 
-  // initial alerts
-  for (let i = 0; i < 15; i++) {
-    const service = randomChoice(state.services)
-    const severity: Alert['severity'] = randomChoice(['critical', 'warning', 'info'])
-    state.alerts.push({
-      id: uuid(),
-      serviceId: service.id,
-      serviceName: service.name,
-      severity,
-      message: `Initial ${severity} alert`,
-      timestamp: now - Math.floor(Math.random() * 59 * 60_000),
-      status: Math.random() < 0.4 ? 'acknowledged' : 'active'
-    })
+  for (const seg of logSegments) {
+    const segStart = now - seg.startAge * 1000
+    const segEnd = now - seg.endAge * 1000
+    for (let t = segStart; t <= segEnd; t += seg.intervalMs) {
+      const count = Math.floor(randomBetween(1, 4))
+      for (let c = 0; c < count; c++) {
+        const service = randomChoice(state.services)
+        const rnd = Math.random()
+        const level: LogLevel = rnd < 0.6 ? 'INFO' : rnd < 0.88 ? 'WARN' : 'ERROR'
+        const jitter = randomBetween(-seg.intervalMs * 0.4, seg.intervalMs * 0.4)
+        state.logs.push({
+          id: uuid(),
+          serviceId: service.id,
+          serviceName: service.name,
+          level,
+          message: makeLogMessage(level),
+          timestamp: Math.round(Math.max(now - 30 * 86400 * 1000, t + jitter))
+        })
+      }
+    }
   }
+  state.logs.sort((a, b) => a.timestamp - b.timestamp)
+
+  // Historical alerts — sparser; older ones mostly acknowledged
+  const alertSegments = [
+    { startAge: 30 * 86400, endAge: 8 * 86400, intervalMs: 24 * 3600 * 1000 },
+    { startAge: 8 * 86400, endAge: 2 * 86400, intervalMs: 4 * 3600 * 1000 },
+    { startAge: 2 * 86400, endAge: 0, intervalMs: 30 * 60 * 1000 }
+  ]
+
+  for (const seg of alertSegments) {
+    const segStart = now - seg.startAge * 1000
+    const segEnd = now - seg.endAge * 1000
+    for (let t = segStart; t <= segEnd; t += seg.intervalMs) {
+      if (Math.random() > 0.35) continue
+      const service = randomChoice(state.services)
+      const severity: AlertSeverity = randomChoice(['critical', 'warning', 'warning', 'info'])
+      const ageSec = (now - t) / 1000
+      const status: AlertStatus =
+        ageSec > 2 * 3600
+          ? Math.random() < 0.85
+            ? 'acknowledged'
+            : 'active'
+          : Math.random() < 0.5
+            ? 'active'
+            : 'acknowledged'
+      state.alerts.push({
+        id: uuid(),
+        serviceId: service.id,
+        serviceName: service.name,
+        severity,
+        message: makeAlertMessage(severity, service.name),
+        timestamp: Math.round(t + randomBetween(0, seg.intervalMs * 0.9)),
+        status
+      })
+    }
+  }
+  state.alerts.sort((a, b) => a.timestamp - b.timestamp)
 }
 
 // ---------- ticking logic --------------------------------------------------
 
-enum TickLimits {
-  MAX_METRICS = 60,
-  MAX_LOGS = 2000,
-  MAX_ALERTS = 500
-}
-
-function drift(value: number) {
-  const factor = randomBetween(0.95, 1.05)
-  return value * factor
-}
-
-function tick() {
+function tick(): void {
   const now = Date.now()
 
-  // metrics drift
   state.services.forEach((svc) => {
     const arr = state.metrics[svc.id]
-    if (!arr) return
+    if (!arr || arr.length === 0) return
+
+    const settings = state.alertSettings[svc.id]
+    const cpuMean = (settings?.cpu.warning ?? 70) * 0.55
+    const ramMean = (settings?.ram.warning ?? 70) * 0.55
+    const diskMean = (settings?.disk.warning ?? 80) * 0.55
+    const iopsMean = (settings?.iops.warning ?? 1000) * 0.4
+
     const last = arr[arr.length - 1]
     const next: MetricPoint = {
       timestamp: now,
-      cpu: drift(last.cpu),
-      ram: drift(last.ram),
-      disk: drift(last.disk),
-      iops: drift(last.iops)
+      cpu: clamp(mrw(last.cpu, cpuMean, 0.05, 3), 0.5, 99),
+      ram: clamp(mrw(last.ram, ramMean, 0.05, 2), 0.5, 99),
+      disk: clamp(mrw(last.disk, diskMean, 0.02, 0.8), 0.5, 99),
+      iops: clamp(mrw(last.iops, iopsMean, 0.05, 25), 0, 2000)
     }
     arr.push(next)
-    if (arr.length > TickLimits.MAX_METRICS) arr.shift()
+    if (arr.length > MAX_METRIC_POINTS) arr.shift()
+
+    // Mirror latest metrics to the service record
+    svc.cpu = next.cpu
+    svc.ram = next.ram
+    svc.disk = next.disk
+    svc.iops = next.iops
+    svc.uptime += 5
+
+    const prevStatus = svc.status
+
+    // 1% chance of random crash
+    if (Math.random() < 0.01) {
+      svc.status = 'down'
+    } else {
+      const cpuThresh = settings?.cpu ?? { warning: 70, critical: 90 }
+      const ramThresh = settings?.ram ?? { warning: 70, critical: 90 }
+      const diskThresh = settings?.disk ?? { warning: 80, critical: 95 }
+      svc.status = deriveStatus(next.cpu, next.ram, next.disk, {
+        warning: Math.min(cpuThresh.warning, ramThresh.warning, diskThresh.warning),
+        critical: Math.min(cpuThresh.critical, ramThresh.critical, diskThresh.critical)
+      })
+    }
+
+    // 2–4 logs per tick, weighted by current service health
+    const logCount = Math.floor(randomBetween(2, 5))
+    for (let i = 0; i < logCount; i++) {
+      const rnd = Math.random()
+      let level: LogLevel
+      if (svc.status === 'critical' || svc.status === 'down') {
+        level = rnd < 0.25 ? 'INFO' : rnd < 0.55 ? 'WARN' : 'ERROR'
+      } else if (svc.status === 'degraded') {
+        level = rnd < 0.45 ? 'INFO' : rnd < 0.8 ? 'WARN' : 'ERROR'
+      } else {
+        level = rnd < 0.65 ? 'INFO' : rnd < 0.9 ? 'WARN' : 'ERROR'
+      }
+      state.logs.push({
+        id: uuid(),
+        serviceId: svc.id,
+        serviceName: svc.name,
+        level,
+        message: makeLogMessage(level),
+        timestamp: now
+      })
+    }
+
+    // Generate alert when status worsens
+    const statusOrder: Record<ServiceStatus, number> = {
+      healthy: 0,
+      degraded: 1,
+      critical: 2,
+      down: 3
+    }
+    if (statusOrder[svc.status] > statusOrder[prevStatus]) {
+      const severity: AlertSeverity =
+        svc.status === 'critical' || svc.status === 'down' ? 'critical' : 'warning'
+      state.alerts.push({
+        id: uuid(),
+        serviceId: svc.id,
+        serviceName: svc.name,
+        severity,
+        message: makeAlertMessage(severity, svc.name),
+        timestamp: now,
+        status: 'active'
+      })
+    }
   })
 
-  // new logs
-  const newLogCount = Math.floor(randomBetween(2, 4))
-  for (let i = 0; i < newLogCount; i++) {
-    const service = randomChoice(state.services)
-    const rnd = Math.random()
-    const level: LogEntry['level'] = rnd < 0.6 ? 'INFO' : rnd < 0.9 ? 'WARN' : 'ERROR'
-    state.logs.push({
-      id: uuid(),
-      serviceId: service.id,
-      serviceName: service.name,
-      level,
-      message: `Automated ${level} log`,
-      timestamp: now
-    })
-    if (state.logs.length > TickLimits.MAX_LOGS) state.logs.shift()
-  }
-
-  // possible new alert
-  if (Math.random() < 0.1) {
-    const service = randomChoice(state.services)
-    const severity: Alert['severity'] = randomChoice(['critical', 'warning', 'info'])
-    state.alerts.push({
-      id: uuid(),
-      serviceId: service.id,
-      serviceName: service.name,
-      severity,
-      message: `Automated ${severity} alert`,
-      timestamp: now,
-      status: 'active'
-    })
-    if (state.alerts.length > TickLimits.MAX_ALERTS) state.alerts.shift()
-  }
+  // trim to keep memory bounded
+  if (state.logs.length > MAX_LOGS) state.logs.splice(0, state.logs.length - MAX_LOGS)
+  if (state.alerts.length > MAX_ALERTS) state.alerts.splice(0, state.alerts.length - MAX_ALERTS)
 }
 
 let ticker: NodeJS.Timeout | null = null
 
-export function startTicker() {
+export function startTicker(): void {
   if (ticker) return
   ticker = setInterval(tick, 5000)
 }
 
-export function stopTicker() {
+export function stopTicker(): void {
   if (ticker) clearInterval(ticker)
   ticker = null
 }
 
 // ---------- query helpers --------------------------------------------------
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-export function getServices(_periodMinutes?: number): Service[] {
-  // the `period` argument is not used at the moment; we simply expose all
-  // services. it exists only to satisfy the shape of the public API.
+export function getServices(): Service[] {
   return [...state.services]
 }
 
@@ -290,32 +534,21 @@ export function getService(id: string): Service | undefined {
   return state.services.find((s) => s.id === id)
 }
 
-export function getMetrics(_id: string, rangeSec?: number): MetricPoint[] {
-  const now = Date.now()
+export function getMetrics(id: string, rangeSec?: number): MetricPoint[] {
+  const arr = state.metrics[id]
+  if (!arr || arr.length === 0) return []
 
-  // Always generate fresh data for the requested range to ensure proper time spans
-  if (!rangeSec) {
-    rangeSec = 30 * 60 // Default to 30 minutes
+  if (!rangeSec || rangeSec <= 0) {
+    rangeSec = 30 * 60 // default 30 minutes
   }
 
-  const startTime = now - rangeSec * 1000
-  const maxPoints = 100
+  const cutoff = Date.now() - rangeSec * 1000
+  const filtered = arr.filter((p) => p.timestamp >= cutoff)
 
-  // Generate exactly maxPoints data points evenly distributed across the time range
-  const points: MetricPoint[] = []
-  for (let i = 0; i < maxPoints; i++) {
-    // Linear interpolation from startTime to now
-    const timestamp = startTime + (i / (maxPoints - 1)) * (now - startTime)
-    points.push({
-      timestamp: Math.round(timestamp),
-      cpu: randomBetween(1, 50),
-      ram: randomBetween(1, 50),
-      disk: randomBetween(1, 50),
-      iops: randomBetween(100, 1000)
-    })
-  }
-
-  return points
+  // Cap at 300 points; sample evenly when series is longer
+  if (filtered.length <= 300) return filtered
+  const step = filtered.length / 300
+  return Array.from({ length: 300 }, (_, i) => filtered[Math.round(i * step)])
 }
 
 interface PaginationParams {
@@ -323,11 +556,14 @@ interface PaginationParams {
   limit?: number
 }
 
-function paginate<T>(
-  items: T[],
-  page = 1,
-  limit = 20
-): { items: T[]; total: number; page: number; limit: number } {
+interface PaginatedResult<T> {
+  items: T[]
+  total: number
+  page: number
+  limit: number
+}
+
+function paginate<T>(items: T[], page = 1, limit = 20): PaginatedResult<T> {
   const total = items.length
   const start = (page - 1) * limit
   return {
@@ -343,25 +579,29 @@ export function queryLogs(
     serviceId?: string
     level?: string
     search?: string
-    timeRange?: number
+    timeRange?: number // seconds
   } & PaginationParams
-) {
-  let items = state.logs
+): PaginatedResult<LogEntry> {
+  // Newest first so page 1 = most recent
+  let items = [...state.logs].reverse()
+
   if (opts.serviceId) {
     items = items.filter((l) => l.serviceId === opts.serviceId)
   }
-  if (opts.level) {
-    items = items.filter((l) => l.level === opts.level)
+  if (opts.level && opts.level !== 'all') {
+    const upper = opts.level.toUpperCase()
+    items = items.filter((l) => l.level === upper)
   }
   if (opts.search) {
-    items = items.filter((l) => l.message.toLowerCase().includes(opts.search!.toLowerCase()))
+    const q = opts.search.toLowerCase()
+    items = items.filter(
+      (l) => l.message.toLowerCase().includes(q) || l.serviceName.toLowerCase().includes(q)
+    )
   }
-  if (opts.timeRange) {
-    const cutoff = Date.now() - opts.timeRange
-    items = items.filter((l) => {
-      const ts = typeof l.timestamp === 'number' ? l.timestamp : new Date(l.timestamp).getTime()
-      return ts >= cutoff
-    })
+  if (opts.timeRange && opts.timeRange > 0) {
+    // timeRange is seconds → multiply by 1000 for ms comparison
+    const cutoff = Date.now() - opts.timeRange * 1000
+    items = items.filter((l) => l.timestamp >= cutoff)
   }
   return paginate(items, opts.page, opts.limit)
 }
@@ -370,37 +610,45 @@ export function queryAlerts(
   opts: {
     severity?: string
     status?: string
-    timeRange?: number
+    timeRange?: number // seconds
   } & PaginationParams
-) {
-  let items = state.alerts
+): PaginatedResult<Alert> {
+  // Newest first
+  let items = [...state.alerts].reverse()
+
   if (opts.severity) {
     items = items.filter((a) => a.severity === opts.severity)
   }
   if (opts.status) {
     items = items.filter((a) => a.status === opts.status)
   }
-  if (opts.timeRange) {
-    const cutoff = Date.now() - opts.timeRange
-    items = items.filter((a) => {
-      const ts = typeof a.timestamp === 'number' ? a.timestamp : new Date(a.timestamp).getTime()
-      return ts >= cutoff
-    })
+  if (opts.timeRange && opts.timeRange > 0) {
+    // timeRange is seconds → multiply by 1000 for ms comparison
+    const cutoff = Date.now() - opts.timeRange * 1000
+    items = items.filter((a) => a.timestamp >= cutoff)
   }
   return paginate(items, opts.page, opts.limit)
 }
 
-export function acknowledgeAlert(id: string) {
+export function acknowledgeAlert(id: string): Alert | undefined {
   const a = state.alerts.find((x) => x.id === id)
   if (a) a.status = 'acknowledged'
   return a
 }
 
-export function getActiveAlertCount() {
+export function getActiveAlertCount(): number {
   return state.alerts.filter((a) => a.status === 'active').length
 }
 
-export function getStatus() {
+export function getStatus(): {
+  overall: string
+  healthy: number
+  degraded: number
+  critical: number
+  down: number
+  total: number
+  activeAlerts: number
+} {
   const counts: Record<string, number> = {
     healthy: 0,
     degraded: 0,
@@ -419,22 +667,44 @@ export function getStatus() {
   }
 }
 
-export function getAlertSettings(serviceId: string) {
+export function getAlertSettings(serviceId: string): ServiceAlertSettings | undefined {
   return state.alertSettings[serviceId]
 }
 
-export function updateAlertSettings(serviceId: string, settings: ServiceAlertSettings) {
+export function updateAlertSettings(
+  serviceId: string,
+  settings: ServiceAlertSettings
+): ServiceAlertSettings {
   state.alertSettings[serviceId] = settings
   return settings
 }
 
-export function restartService(id: string) {
+export function restartService(id: string): Promise<void> {
   const s = getService(id)
   if (!s) return Promise.reject(new Error('not found'))
+  s.status = 'down'
   return new Promise<void>((resolve) => {
     setTimeout(
       () => {
         s.status = 'healthy'
+        s.uptime = 0
+        state.logs.push({
+          id: uuid(),
+          serviceId: s.id,
+          serviceName: s.name,
+          level: 'INFO',
+          message: 'Service restarted successfully — uptime reset',
+          timestamp: Date.now()
+        })
+        state.alerts.push({
+          id: uuid(),
+          serviceId: s.id,
+          serviceName: s.name,
+          severity: 'info',
+          message: `${s.name}: Service restarted and back to healthy`,
+          timestamp: Date.now(),
+          status: 'active'
+        })
         resolve()
       },
       randomBetween(2000, 4000)
@@ -442,13 +712,21 @@ export function restartService(id: string) {
   })
 }
 
-export function drainService(id: string) {
+export function drainService(id: string): Promise<void> {
   const s = getService(id)
   if (!s) return Promise.reject(new Error('not found'))
   return new Promise<void>((resolve) => {
     setTimeout(
       () => {
         s.status = 'degraded'
+        state.logs.push({
+          id: uuid(),
+          serviceId: s.id,
+          serviceName: s.name,
+          level: 'WARN',
+          message: 'Service drained — no longer accepting new connections',
+          timestamp: Date.now()
+        })
         resolve()
       },
       randomBetween(3000, 6000)
