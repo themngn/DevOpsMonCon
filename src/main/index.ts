@@ -6,6 +6,8 @@ import { createTray, destroyTray } from './tray'
 // start built-in mock API server for development/testing
 import { startMockServer } from './mock-server'
 import { setupIPC } from './ipc-handlers'
+import { mockEvents, Alert } from './mock-data'
+import { NotificationManager } from './notifications'
 
 function createWindow(): BrowserWindow {
   // Create the browser window.
@@ -83,6 +85,18 @@ app.whenReady().then(() => {
   setupIPC(mainWindow)
   // Create Tray
   createTray(mainWindow)
+
+  // Listen for new alerts from mock data and trigger notifications
+  mockEvents.on('new-alert', (alert: Alert) => {
+    if (alert.severity === 'critical' || alert.severity === 'warning') {
+      const emoji = alert.severity === 'critical' ? '🚨' : '⚠️'
+      NotificationManager.send(
+        `${emoji} Alert: ${alert.serviceName}`,
+        alert.message,
+        mainWindow
+      )
+    }
+  })
 
   app.on('activate', function () {
     // On macOS it's common to re-create a window in the app when the

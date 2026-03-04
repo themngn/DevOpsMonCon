@@ -186,6 +186,10 @@ function makeLogMessage(level: LogLevel): string {
   return renderTemplate(randomChoice(LOG_TEMPLATES[level]))
 }
 
+import { EventEmitter } from 'events'
+
+export const mockEvents = new EventEmitter()
+
 // ---------- state ----------------------------------------------------------
 export interface MockState {
   services: Service[]
@@ -495,7 +499,7 @@ function tick(): void {
     if (statusOrder[svc.status] > statusOrder[prevStatus]) {
       const severity: AlertSeverity =
         svc.status === 'critical' || svc.status === 'down' ? 'critical' : 'warning'
-      state.alerts.push({
+      const newAlert: Alert = {
         id: uuid(),
         serviceId: svc.id,
         serviceName: svc.name,
@@ -503,7 +507,9 @@ function tick(): void {
         message: makeAlertMessage(severity, svc.name),
         timestamp: now,
         status: 'active'
-      })
+      }
+      state.alerts.push(newAlert)
+      mockEvents.emit('new-alert', newAlert)
     }
   })
 
@@ -641,7 +647,7 @@ export function getActiveAlertCount(): number {
 }
 
 export function getStatus(): {
-  overall: string
+  overall: 'green' | 'yellow' | 'red'
   healthy: number
   degraded: number
   critical: number
@@ -656,14 +662,22 @@ export function getStatus(): {
     down: 0
   }
   state.services.forEach((s) => (counts[s.status] = (counts[s.status] || 0) + 1))
+  
+  let overall: 'green' | 'yellow' | 'red' = 'green'
+  if (counts.critical > 0 || counts.down > 0) {
+    overall = 'red'
+  } else if (counts.degraded > 0) {
+    overall = 'yellow'
+  }
+
   return {
-    overall: 'ok',
+    overall,
     healthy: counts.healthy,
     degraded: counts.degraded,
     critical: counts.critical,
     down: counts.down,
     total: state.services.length,
-    activeAlerts: getActiveAlertCount()
+    activeAlerts: state.alerts.filter((a) => a.status === 'active').length
   }
 }
 

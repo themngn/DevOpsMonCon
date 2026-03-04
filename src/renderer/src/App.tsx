@@ -1,4 +1,5 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Navigate, useNavigate } from 'react-router-dom'
+import { useEffect } from 'react'
 import { useServer } from './contexts/ServerProvider'
 import { RefreshProvider } from './contexts/RefreshProvider'
 import AppShell from './components/layout/AppShell'
@@ -9,6 +10,22 @@ import ServiceDetailPage from './pages/ServiceDetailPage'
 import AlertsPage from './pages/AlertsPage'
 import LogsPage from './pages/LogsPage'
 import SettingsPage from './pages/SettingsPage'
+
+function NavigationListener() {
+  const navigate = useNavigate()
+
+  useEffect(() => {
+    if (window.api?.onNavigate) {
+      const unsubscribe = window.api.onNavigate((route: string) => {
+        navigate(route)
+      })
+      return () => unsubscribe()
+    }
+    return undefined
+  }, [navigate])
+
+  return null
+}
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { activeServer, loading } = useServer()
@@ -35,6 +52,7 @@ function App(): React.JSX.Element {
   if (!activeServer) {
     return (
       <BrowserRouter>
+        <NavigationListener />
         <Routes>
           <Route path="/login" element={<ServerSelectPage />} />
           <Route path="*" element={<Navigate to="/login" replace />} />
@@ -45,6 +63,7 @@ function App(): React.JSX.Element {
 
   return (
     <BrowserRouter>
+      <NavigationListener />
       <Routes>
         <Route path="/login" element={<ServerSelectPage />} />
 
