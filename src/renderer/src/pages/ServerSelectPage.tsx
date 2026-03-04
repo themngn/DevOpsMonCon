@@ -21,6 +21,26 @@ export default function ServerSelectPage() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [serverToDelete, setServerToDelete] = useState<ServerEntry | null>(null)
 
+  // Helper to ensure URL has a port, defaulting to 3001
+  const normalizeUrl = (inputUrl: string): string => {
+    let formatted = inputUrl.trim().replace(/\/$/, '')
+    if (!formatted.startsWith('http')) return formatted
+
+    try {
+      const urlObj = new URL(formatted)
+      // Check if port is explicitly set. Note: urlObj.port is empty if default for protocol
+      if (!urlObj.port) {
+        // If it's something like http://localhost or http://192.168.1.5, add 3001
+        // We only add it if it's not a standard https/http port already implied 
+        // but the user specifically asked for 3001 as default.
+        return `${urlObj.protocol}//${urlObj.hostname}:3001${urlObj.pathname}`.replace(/\/$/, '')
+      }
+      return formatted
+    } catch (e) {
+      return formatted
+    }
+  }
+
   const handleConnect = async (server: ServerEntry) => {
     setConnectingId(server.id)
     setError('')
@@ -29,7 +49,7 @@ export default function ServerSelectPage() {
     const timeoutId = setTimeout(() => controller.abort(), 3000)
 
     try {
-      const baseUrl = server.url.replace(/\/$/, '')
+      const baseUrl = normalizeUrl(server.url)
       const response = await fetch(`${baseUrl}/api/status`, {
         signal: controller.signal,
         cache: 'no-store'
@@ -41,7 +61,17 @@ export default function ServerSelectPage() {
         throw new Error(`Server returned status ${response.status}`)
       }
 
-      connect(server)
+      // Update server URL with normalized one if it changed
+      if (baseUrl !== server.url.replace(/\/$/, '')) {
+        const updatedServer = { ...server, url: baseUrl }
+        const updatedServers = servers.map(s => s.id === server.id ? updatedServer : s)
+        setServers(updatedServers)
+        storage.set('savedServers', updatedServers)
+        connect(updatedServer)
+      } else {
+        connect(server)
+      }
+      
       navigate('/')
     } catch (err: any) {
       clearTimeout(timeoutId)
@@ -59,19 +89,24 @@ export default function ServerSelectPage() {
 
   const handleAddServer = (e: React.FormEvent) => {
     e.preventDefault()
-    if (!name.trim() || !url.trim()) {
+    const trimmedName = name.trim()
+    const trimmedUrl = url.trim()
+
+    if (!trimmedName || !trimmedUrl) {
       setError('All fields are required')
       return
     }
-    if (!url.startsWith('http')) {
+    if (!trimmedUrl.startsWith('http')) {
       setError('URL must start with http:// or https://')
       return
     }
 
+    const finalUrl = normalizeUrl(trimmedUrl)
+
     const newServer: ServerEntry = {
       id: crypto.randomUUID(),
-      name,
-      url,
+      name: trimmedName,
+      url: finalUrl,
       lastConnected: Date.now()
     }
 
