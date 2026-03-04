@@ -19,6 +19,10 @@ import { useSettings } from '@/hooks/useSettings'
 import { useRefresh } from '@/contexts/RefreshProvider'
 import { getAlerts, acknowledgeAlert } from '@/services/api'
 import type { Alert, AlertSeverity, AlertStatus } from '@/types/index'
+import { Switch } from '../components/ui/Switch'
+import { Label } from '../components/ui/Label'
+import { ToggleGroup, ToggleGroupItem } from '../components/ui/ToggleGroup'
+import { Bell, BellOff } from 'lucide-react'
 
 // Use "all" as sentinel since empty strings aren't valid option values
 const ALL = 'all'
@@ -71,7 +75,7 @@ const statusParam = (v: string): string | undefined => {
 }
 
 export default function AlertsPage() {
-  const { pollingInterval, autoRefresh } = useSettings()
+  const { pollingInterval, autoRefresh, notificationsEnabled, notificationThreshold, updateSettings } = useSettings()
   const { refreshKey, triggerRefresh, reportLastUpdated } = useRefresh()
   const [alerts, setAlerts] = useState<AlertState[]>([])
   const [loading, setLoading] = useState(true)
@@ -177,11 +181,38 @@ export default function AlertsPage() {
   return (
     <div className="flex flex-col h-full min-h-0 gap-4">
       {/* Header */}
-      <div className="shrink-0">
-        <h1 className="text-3xl font-bold tracking-tight">Alerts</h1>
-        <p className="text-muted-foreground mt-1 text-sm">
-          Active alerts across all monitored services
-        </p>
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 shrink-0">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Alerts</h1>
+          <p className="text-muted-foreground mt-1 text-sm">
+            Active alerts across all monitored services
+          </p>
+        </div>
+
+        {/* Notification Controls */}
+        <div className="flex items-center gap-4 bg-card/50 rounded-lg p-2 px-4">
+          <div className="flex items-center gap-3">
+            <span className="text-[10px] uppercase font-bold text-muted-foreground whitespace-nowrap">Notifications:</span>
+            <ToggleGroup 
+              type="single"
+              value={notificationThreshold} 
+              onValueChange={(v) => {
+                if (v) updateSettings({ notificationThreshold: v as any })
+              }}
+              variant="outline"
+              size="xs"
+              className="bg-muted/30 rounded-lg p-0.5"
+            >
+              <ToggleGroupItem value="all" className="rounded-md px-3">All</ToggleGroupItem>
+              <ToggleGroupItem value="warning" className="rounded-md px-3">Warn</ToggleGroupItem>
+              <ToggleGroupItem value="critical" className="rounded-md px-3">Critical</ToggleGroupItem>
+              <ToggleGroupItem value="off" className="rounded-md px-3 text-destructive data-[state=on]:bg-destructive data-[state=on]:text-white">
+                <BellOff className="h-3.5 w-3.5 mr-1.5" />
+                Mute
+              </ToggleGroupItem>
+            </ToggleGroup>
+          </div>
+        </div>
       </div>
 
       {/* Filters */}
