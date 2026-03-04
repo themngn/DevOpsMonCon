@@ -16,8 +16,12 @@ const api = {
   saveSettings: (settings: AppSettings) => ipcRenderer.invoke('saveSettings', settings),
 
   // Tray/Notifications
-  updateTrayStatus: (status: string) => ipcRenderer.invoke('updateTrayStatus', status),
-  sendNotification: (title: string, options?: any) => ipcRenderer.invoke('sendNotification', title, options),
+  updateTrayStatus: (status: 'green' | 'yellow' | 'red', tooltip: string, alertsCount: number) => {
+    ipcRenderer.send('updateTrayStatus', status, tooltip, alertsCount)
+  },
+  sendNotification: (title: string, body: string) => {
+    ipcRenderer.send('sendNotification', title, body)
+  },
 
   // Event listeners
   onAlertReceived: (callback: (alert: any) => void) => {
