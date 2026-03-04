@@ -32,9 +32,7 @@ export default function ServiceCard({ service }: Props) {
       <div className="flex items-start justify-between mb-4">
         <div>
           <h3 className="text-lg font-semibold">{service.name}</h3>
-          <p className="text-xs text-muted-foreground">
-            Uptime: {formatUptime(service.uptime)}
-          </p>
+          <p className="text-xs text-muted-foreground">Uptime: {formatUptime(service.uptime)}</p>
         </div>
 
         <StatusBadge status={service.status} />
@@ -46,9 +44,7 @@ export default function ServiceCard({ service }: Props) {
         <Metric label="RAM" value={service.ram} />
         <Metric label="Disk" value={service.disk} />
 
-        <div className="text-xs text-muted-foreground">
-          IOPs: {Math.round(service.iops)}
-        </div>
+        <div className="text-xs text-muted-foreground">IOPs: {Math.round(service.iops)}</div>
       </div>
     </div>
   )

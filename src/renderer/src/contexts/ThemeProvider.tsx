@@ -32,7 +32,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     }
 
     root.classList.add(theme)
-    console.log('[Theme] Manual theme applied:', theme)
+    return undefined
   }, [theme])
 
   const cycleTheme = () => {

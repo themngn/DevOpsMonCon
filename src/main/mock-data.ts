@@ -144,11 +144,11 @@ export function initMockData() {
 
     // Generate historical metric points covering the last 30 days
     // with 7.2-hour intervals = ~100 points for 30 days
-    const now = Date.now()
+    const seriesNow = Date.now()
     const points: MetricPoint[] = []
-    const thirtyDaysAgo = now - 30 * 24 * 60 * 60 * 1000
+    const thirtyDaysAgo = seriesNow - 30 * 24 * 60 * 60 * 1000
 
-    for (let time = thirtyDaysAgo; time <= now; time += 7.2 * 60 * 60_000) {
+    for (let time = thirtyDaysAgo; time <= seriesNow; time += 7.2 * 60 * 60_000) {
       points.push({
         timestamp: time,
         cpu: randomBetween(1, 50),
@@ -279,6 +279,7 @@ export function stopTicker() {
 
 // ---------- query helpers --------------------------------------------------
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 export function getServices(_periodMinutes?: number): Service[] {
   // the `period` argument is not used at the moment; we simply expose all
   // services. it exists only to satisfy the shape of the public API.
@@ -289,7 +290,7 @@ export function getService(id: string): Service | undefined {
   return state.services.find((s) => s.id === id)
 }
 
-export function getMetrics(id: string, rangeSec?: number): MetricPoint[] {
+export function getMetrics(_id: string, rangeSec?: number): MetricPoint[] {
   const now = Date.now()
 
   // Always generate fresh data for the requested range to ensure proper time spans

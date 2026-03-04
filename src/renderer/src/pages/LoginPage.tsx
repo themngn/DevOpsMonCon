@@ -4,7 +4,7 @@ import { useServer } from '../contexts/ServerProvider'
 
 export default function LoginPage() {
   const navigate = useNavigate()
-  const { addServer, setActiveServer } = useServer()
+  const { connect } = useServer()
   const [serverName, setServerName] = useState('')
   const [serverUrl, setServerUrl] = useState('')
   const [loading, setLoading] = useState(false)
@@ -20,8 +20,7 @@ export default function LoginPage() {
         name: serverName,
         url: serverUrl
       }
-      await addServer(server)
-      await setActiveServer(server)
+      connect(server)
       navigate('/')
     } catch (error) {
       console.error('Failed to add server:', error)

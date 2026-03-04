@@ -31,5 +31,3 @@ async function getStore() {
 
 export { getStore }
 export default getStore
-
-

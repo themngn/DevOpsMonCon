@@ -48,7 +48,13 @@ function App(): React.JSX.Element {
         <Route path="/login" element={<ServerSelectPage />} />
 
         {/* Protected Routes wrapped in AppShell */}
-        <Route element={<ProtectedRoute><AppShell /></ProtectedRoute>}>
+        <Route
+          element={
+            <ProtectedRoute>
+              <AppShell />
+            </ProtectedRoute>
+          }
+        >
           <Route path="/" element={<DashboardPage />} />
           <Route path="/services" element={<ServicesPage />} />
           <Route path="/services/:id" element={<ServiceDetailPage />} />

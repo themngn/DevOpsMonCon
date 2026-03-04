@@ -10,11 +10,16 @@ export default function Header() {
 
   const getPageTitle = () => {
     switch (location.pathname) {
-      case '/': return 'Dashboard'
-      case '/alerts': return 'Alerts'
-      case '/logs': return 'Logs'
-      case '/settings': return 'Settings'
-      default: return 'DevOps Monitor'
+      case '/':
+        return 'Dashboard'
+      case '/alerts':
+        return 'Alerts'
+      case '/logs':
+        return 'Logs'
+      case '/settings':
+        return 'Settings'
+      default:
+        return 'DevOps Monitor'
     }
   }
 
@@ -51,12 +56,24 @@ export default function Header() {
             style={{ colorScheme: theme === 'system' ? 'light dark' : theme }}
             disabled={!autoRefresh}
           >
-            <option className="bg-background text-foreground" value={5000}>5s</option>
-            <option className="bg-background text-foreground" value={10000}>10s</option>
-            <option className="bg-background text-foreground" value={15000}>15s</option>
-            <option className="bg-background text-foreground" value={30000}>30s</option>
-            <option className="bg-background text-foreground" value={60000}>1m</option>
-            <option className="bg-background text-foreground" value={120000}>2m</option>
+            <option className="bg-background text-foreground" value={5000}>
+              5s
+            </option>
+            <option className="bg-background text-foreground" value={10000}>
+              10s
+            </option>
+            <option className="bg-background text-foreground" value={15000}>
+              15s
+            </option>
+            <option className="bg-background text-foreground" value={30000}>
+              30s
+            </option>
+            <option className="bg-background text-foreground" value={60000}>
+              1m
+            </option>
+            <option className="bg-background text-foreground" value={120000}>
+              2m
+            </option>
           </select>
         </div>
 
