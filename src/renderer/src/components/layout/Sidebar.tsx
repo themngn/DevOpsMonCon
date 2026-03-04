@@ -7,7 +7,8 @@ import {
   LogOut,
   ChevronLeft,
   ChevronRight,
-  Server
+  Server,
+  Activity
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useServer } from '../../contexts/ServerProvider'
@@ -49,7 +50,7 @@ export default function Sidebar() {
           </span>
         )}
       </div>
-      {!collapsed && <span>{label}</span>}
+      {!collapsed && <span className="text-sm font-medium">{label}</span>}
     </NavLink>
   )
 
@@ -60,8 +61,11 @@ export default function Sidebar() {
         collapsed ? 'w-16' : 'w-60'
       )}
     >
-      <div className="flex h-14 items-center justify-between px-3 border-b">
-        {!collapsed && <span className="font-bold truncate">DevOps Monitor</span>}
+      <div className="flex h-14 items-center gap-3 px-4 border-b">
+        <Activity className="h-6 w-6 shrink-0 text-primary" />
+        {!collapsed && (
+          <span className="font-bold text-sm whitespace-nowrap">DevOps Monitor</span>
+        )}
         <button
           onClick={() => setCollapsed(!collapsed)}
           className="p-1 hover:bg-muted rounded-md ml-auto"
@@ -80,13 +84,13 @@ export default function Sidebar() {
         <button
           onClick={handleDisconnect}
           className={cn(
-            'flex w-full items-center gap-3 px-3 py-2 rounded-md text-red-500 hover:bg-red-50 transition-colors',
+            'flex w-full items-center gap-3 px-3 py-2 rounded-md text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors',
             collapsed && 'justify-center px-2'
           )}
           title="Disconnect"
         >
           <LogOut className="w-5 h-5" />
-          {!collapsed && <span>Disconnect</span>}
+          {!collapsed && <span className="text-sm font-medium">Disconnect</span>}
         </button>
       </nav>
 
@@ -97,8 +101,8 @@ export default function Sidebar() {
               <Server className="w-4 h-4 text-primary" />
             </div>
             <div className="overflow-hidden">
-              <p className="text-sm font-medium truncate">{activeServer.name}</p>
-              <p className="text-xs text-muted-foreground truncate">{activeServer.url}</p>
+              <p className="text-xs font-medium truncate">{activeServer.name}</p>
+              <p className="text-[10px] text-muted-foreground truncate">{activeServer.url}</p>
             </div>
           </div>
         </div>
@@ -106,3 +110,4 @@ export default function Sidebar() {
     </aside>
   )
 }
+
