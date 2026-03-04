@@ -4,6 +4,7 @@ import {
   LayoutDashboard,
   Bell,
   FileText,
+  Shield,
   LogOut,
   ChevronLeft,
   ChevronRight,
@@ -93,6 +94,7 @@ export default function Sidebar() {
         <NavItem to="/" icon={LayoutDashboard} label="Dashboard" />
         <NavItem to="/alerts" icon={Bell} label="Alerts" badge={alertCount} />
         <NavItem to="/logs" icon={FileText} label="Logs" />
+        <NavItem to="/audit-log" icon={Shield} label="Audit Log" />
 
         <div className="py-2">
           <Separator className="bg-sidebar-border" />

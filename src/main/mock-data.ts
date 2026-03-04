@@ -9,7 +9,7 @@
 //  • Alerts generated from threshold violations (cause → effect)
 //  • timeRange param is seconds; filtering converts to ms internally
 
-export type ServiceStatus = 'healthy' | 'degraded' | 'critical' | 'down'
+export type ServiceStatus = 'healthy' | 'degraded' | 'critical' | 'down' | 'restarting'
 export interface Service {
   id: string
   name: string
@@ -22,6 +22,7 @@ export interface Service {
   ip: string
   port: number
   version: string
+  downUntil?: number
 }
 
 export interface MetricPoint {
@@ -52,6 +53,15 @@ export interface LogEntry {
   level: LogLevel
   message: string
   timestamp: number
+}
+
+export interface AuditLogEntry {
+  id: string
+  timestamp: number
+  user: string
+  action: string
+  target: string
+  details: string
 }
 
 export interface MetricThreshold {
@@ -195,6 +205,7 @@ export interface MockState {
   services: Service[]
   metrics: Record<string, MetricPoint[]>
   logs: LogEntry[]
+  auditLogs: AuditLogEntry[]
   alerts: Alert[]
   alertSettings: Record<string, ServiceAlertSettings>
 }
@@ -203,6 +214,7 @@ const state: MockState = {
   services: [],
   metrics: {},
   logs: [],
+  auditLogs: [],
   alerts: [],
   alertSettings: {}
 }
@@ -212,6 +224,7 @@ const state: MockState = {
 const MAX_METRIC_POINTS = 12000 // per service — ~30 days at 1 point per ~3.6 min
 const MAX_LOGS = 50000
 const MAX_ALERTS = 5000
+const MAX_AUDIT_LOGS = 10000
 
 // ---------- alert message generator ----------------------------------------
 
@@ -417,6 +430,30 @@ export function initMockData(): void {
     }
   }
   state.alerts.sort((a, b) => a.timestamp - b.timestamp)
+
+  // Historical audit logs
+  const auditActions = [
+    { action: 'SERVICE_RESTART', target: 'Service Control' },
+    { action: 'SERVICE_DRAIN', target: 'Service Control' },
+    { action: 'SETTINGS_UPDATE', target: 'System Settings' },
+    { action: 'ALERT_ACKNOWLEDGE', target: 'Alert Center' },
+    { action: 'USER_LOGIN', target: 'Auth' }
+  ]
+  const users = ['admin@example.com', 'ops-lead@example.com', 'developer-1@example.com']
+
+  for (let i = 0; i < 150; i++) {
+    const act = randomChoice(auditActions)
+    const service = randomChoice(state.services)
+    state.auditLogs.push({
+      id: uuid(),
+      timestamp: now - randomBetween(0, 30 * 86400 * 1000),
+      user: randomChoice(users),
+      action: act.action,
+      target: act.action.startsWith('SERVICE') ? service.name : act.target,
+      details: `User performed ${act.action.toLowerCase().replace('_', ' ')}`
+    })
+  }
+  state.auditLogs.sort((a, b) => a.timestamp - b.timestamp)
 }
 
 // ---------- ticking logic --------------------------------------------------
@@ -429,18 +466,39 @@ function tick(): void {
     if (!arr || arr.length === 0) return
 
     const settings = state.alertSettings[svc.id]
-    const cpuMean = (settings?.cpu.warning ?? 70) * 0.55
-    const ramMean = (settings?.ram.warning ?? 70) * 0.55
+    const isPayment = svc.name === 'payment-processor'
+    const isMetrics = svc.name === 'metrics-collector'
+    
+    // Resource usage multipliers
+    let cpuMeanMult = 0.55
+    let ramMeanMult = 0.55
+    let noiseMult = 1.0
+    let crashProb = 0.00001 // 0.001% chance per tick
+
+    if (isPayment) {
+      cpuMeanMult = 0.75
+      ramMeanMult = 0.75
+      noiseMult = 2.0
+      crashProb = 0.00005 // 0.005% chance per tick
+    } else if (isMetrics) {
+      cpuMeanMult = 0.85
+      ramMeanMult = 0.88
+      noiseMult = 3.0
+      crashProb = 0.0001 // 0.01% chance per tick
+    }
+
+    const cpuMean = (settings?.cpu.warning ?? 70) * cpuMeanMult
+    const ramMean = (settings?.ram.warning ?? 70) * ramMeanMult
     const diskMean = (settings?.disk.warning ?? 80) * 0.55
     const iopsMean = (settings?.iops.warning ?? 1000) * 0.4
 
     const last = arr[arr.length - 1]
     const next: MetricPoint = {
       timestamp: now,
-      cpu: clamp(mrw(last.cpu, cpuMean, 0.05, 3), 0.5, 99),
-      ram: clamp(mrw(last.ram, ramMean, 0.05, 2), 0.5, 99),
+      cpu: clamp(mrw(last.cpu, cpuMean, 0.05, 3 * noiseMult), 0.5, 99),
+      ram: clamp(mrw(last.ram, ramMean, 0.05, 2 * noiseMult), 0.5, 99),
       disk: clamp(mrw(last.disk, diskMean, 0.02, 0.8), 0.5, 99),
-      iops: clamp(mrw(last.iops, iopsMean, 0.05, 25), 0, 2000)
+      iops: clamp(mrw(last.iops, iopsMean, 0.05, 25 * noiseMult), 0, 2000)
     }
     arr.push(next)
     if (arr.length > MAX_METRIC_POINTS) arr.shift()
@@ -450,14 +508,33 @@ function tick(): void {
     svc.ram = next.ram
     svc.disk = next.disk
     svc.iops = next.iops
-    svc.uptime += 5
+    svc.uptime += 0.5 // 500ms = 0.5s
 
     const prevStatus = svc.status
 
-    // 1% chance of random crash
-    if (Math.random() < 0.01) {
+    if (svc.downUntil && now < svc.downUntil) {
+      svc.status = 'restarting'
+      // When restarting, metrics stay minimal
+      const last = arr[arr.length - 1]
+      arr.push({
+        timestamp: now,
+        cpu: clamp(mrw(last.cpu, 0, 0.2, 0.5), 0, 99),
+        ram: clamp(mrw(last.ram, 0, 0.2, 0.5), 0, 99),
+        disk: last.disk,
+        iops: 0
+      })
+      if (arr.length > MAX_METRIC_POINTS) arr.shift()
+      svc.cpu = arr[arr.length - 1].cpu
+      svc.ram = arr[arr.length - 1].ram
+      svc.disk = arr[arr.length - 1].disk
+      svc.iops = 0
+    } else if (Math.random() < crashProb) {
       svc.status = 'down'
+      svc.downUntil = now + randomBetween(30000, 60000)
     } else {
+      // Clear downUntil if it was set but time passed
+      if (svc.downUntil) delete svc.downUntil
+      
       const cpuThresh = settings?.cpu ?? { warning: 70, critical: 90 }
       const ramThresh = settings?.ram ?? { warning: 70, critical: 90 }
       const diskThresh = settings?.disk ?? { warning: 80, critical: 95 }
@@ -522,7 +599,7 @@ let ticker: NodeJS.Timeout | null = null
 
 export function startTicker(): void {
   if (ticker) return
-  ticker = setInterval(tick, 5000)
+  ticker = setInterval(tick, 500)
 }
 
 export function stopTicker(): void {
@@ -636,9 +713,54 @@ export function queryAlerts(
   return paginate(items, opts.page, opts.limit)
 }
 
+export function queryAuditLogs(
+  opts: {
+    search?: string
+    timeRange?: number // seconds
+  } & PaginationParams
+): PaginatedResult<AuditLogEntry> {
+  // Newest first
+  let items = [...state.auditLogs].reverse()
+
+  if (opts.search) {
+    const q = opts.search.toLowerCase()
+    items = items.filter(
+      (l) =>
+        l.action.toLowerCase().includes(q) ||
+        l.target.toLowerCase().includes(q) ||
+        l.user.toLowerCase().includes(q) ||
+        l.details.toLowerCase().includes(q)
+    )
+  }
+  if (opts.timeRange && opts.timeRange > 0) {
+    const cutoff = Date.now() - opts.timeRange * 1000
+    items = items.filter((l) => l.timestamp >= cutoff)
+  }
+  return paginate(items, opts.page, opts.limit)
+}
+
+export function addAuditLog(entry: Omit<AuditLogEntry, 'id' | 'timestamp'>): void {
+  state.auditLogs.push({
+    id: uuid(),
+    timestamp: Date.now(),
+    ...entry
+  })
+  if (state.auditLogs.length > MAX_AUDIT_LOGS) {
+    state.auditLogs.shift()
+  }
+}
+
 export function acknowledgeAlert(id: string): Alert | undefined {
   const a = state.alerts.find((x) => x.id === id)
-  if (a) a.status = 'acknowledged'
+  if (a) {
+    a.status = 'acknowledged'
+    addAuditLog({
+      user: 'admin@example.com',
+      action: 'ALERT_ACKNOWLEDGE',
+      target: a.serviceName,
+      details: `Acknowledged alert: ${a.message}`
+    })
+  }
   return a
 }
 
@@ -690,17 +812,35 @@ export function updateAlertSettings(
   settings: ServiceAlertSettings
 ): ServiceAlertSettings {
   state.alertSettings[serviceId] = settings
+  const s = getService(serviceId)
+  addAuditLog({
+    user: 'admin@example.com',
+    action: 'SETTINGS_UPDATE',
+    target: s?.name || serviceId,
+    details: 'Updated alert thresholds'
+  })
   return settings
 }
 
 export function restartService(id: string): Promise<void> {
   const s = getService(id)
   if (!s) return Promise.reject(new Error('not found'))
-  s.status = 'down'
+  
+  const delay = randomBetween(30000, 60000)
+  s.status = 'restarting'
+  s.downUntil = Date.now() + delay
+
+  addAuditLog({
+    user: 'admin@example.com',
+    action: 'SERVICE_RESTART',
+    target: s.name,
+    details: `Initiated manual service restart (${Math.round(delay / 1000)}s recovery)`
+  })
   return new Promise<void>((resolve) => {
     setTimeout(
       () => {
         s.status = 'healthy'
+        delete s.downUntil
         s.uptime = 0
         state.logs.push({
           id: uuid(),
@@ -721,7 +861,7 @@ export function restartService(id: string): Promise<void> {
         })
         resolve()
       },
-      randomBetween(2000, 4000)
+      delay
     )
   })
 }
@@ -729,6 +869,12 @@ export function restartService(id: string): Promise<void> {
 export function drainService(id: string): Promise<void> {
   const s = getService(id)
   if (!s) return Promise.reject(new Error('not found'))
+  addAuditLog({
+    user: 'admin@example.com',
+    action: 'SERVICE_DRAIN',
+    target: s.name,
+    details: 'Initiated manual service drain'
+  })
   return new Promise<void>((resolve) => {
     setTimeout(
       () => {

@@ -1,15 +1,18 @@
+import { storage } from '../utils/storage'
 import type {
   Service,
   MetricPoint,
   LogEntry,
+  AuditLogEntry,
   Alert,
   PaginatedResponse,
-  ServiceAlertSettings
+  ServiceAlertSettings,
+  ServerEntry
 } from '../types/index'
 
 let apiPort = 3001
 
-// Initialize API port on first load
+// Initialize API port on first load (fallback for local mock server)
 async function initApiPort() {
   if (window.api) {
     apiPort = await window.api.getApiPort()
@@ -17,7 +20,17 @@ async function initApiPort() {
 }
 initApiPort().catch(console.error)
 
-export const API_BASE = () => `http://127.0.0.1:${apiPort}`
+/**
+ * Dynamically determines the API base URL.
+ * Prioritizes the active server selected by the user.
+ */
+export const API_BASE = () => {
+  const activeServer = storage.get<ServerEntry | null>('activeServer', null)
+  if (activeServer?.url) {
+    return activeServer.url.replace(/\/$/, '')
+  }
+  return `http://127.0.0.1:${apiPort}`
+}
 
 // Services
 export async function getServices(period?: number) {
@@ -120,6 +133,18 @@ export async function acknowledgeAlert(id: string) {
   const res = await fetch(`${API_BASE()}/api/alerts/${id}/acknowledge`, { method: 'POST' })
   if (!res.ok) throw new Error(`Failed to acknowledge alert: ${res.statusText}`)
   return res.json() as Promise<Alert>
+}
+
+// Audit Logs
+export async function getAuditLogs(opts?: { search?: string; page?: number; limit?: number; timeRange?: number }) {
+  const params = new URLSearchParams()
+  if (opts?.search) params.append('search', opts.search)
+  if (opts?.page) params.append('page', opts.page.toString())
+  if (opts?.limit) params.append('limit', opts.limit.toString())
+  if (opts?.timeRange) params.append('timeRange', opts.timeRange.toString())
+  const res = await fetch(`${API_BASE()}/api/audit-logs?${params}`)
+  if (!res.ok) throw new Error(`Failed to fetch audit logs: ${res.statusText}`)
+  return res.json() as Promise<PaginatedResponse<AuditLogEntry>>
 }
 
 // Status
