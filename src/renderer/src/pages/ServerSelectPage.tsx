@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useServer } from '../contexts/ServerProvider'
 import { storage } from '../utils/storage'
 import { ServerEntry } from '../types'
-import { Plus, Server as ServerIcon, Wifi, Loader2 } from 'lucide-react'
+import { Plus, Server as ServerIcon } from 'lucide-react'
 
 export default function ServerSelectPage() {
   const navigate = useNavigate()
@@ -14,7 +14,6 @@ export default function ServerSelectPage() {
   const [name, setName] = useState('')
   const [url, setUrl] = useState('')
   const [error, setError] = useState('')
-  const [isTesting, setIsTesting] = useState(false)
 
   const handleConnect = (server: ServerEntry) => {
     connect(server)
@@ -45,24 +44,6 @@ export default function ServerSelectPage() {
     setName('')
     setUrl('')
     setError('')
-  }
-
-  const handleTestConnection = async () => {
-    if (!url) return
-    setIsTesting(true)
-    setError('')
-    try {
-      // Намагаємося зробити запит до сервера.
-      // Якщо це ваш Express сервер, він має відповідати на GET /
-      const res = await fetch(url)
-      if (!res.ok) throw new Error(`Status: ${res.status}`)
-      alert('Connection successful! Server is ready.')
-    } catch (err) {
-      console.error('Connection failed:', err)
-      setError('Failed to connect. Check URL and ensure server is running.')
-    } finally {
-      setIsTesting(false)
-    }
   }
 
   return (
@@ -122,19 +103,6 @@ export default function ServerSelectPage() {
                 onChange={(e) => setUrl(e.target.value)}
                 className="flex-1 px-3 py-2 border rounded-md bg-background"
               />
-              <button
-                type="button"
-                onClick={handleTestConnection}
-                disabled={isTesting || !url}
-                className="px-3 py-2 border rounded-md hover:bg-muted disabled:opacity-50"
-                title="Test Connection"
-              >
-                {isTesting ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                ) : (
-                  <Wifi className="w-4 h-4" />
-                )}
-              </button>
             </div>
           </div>
           {error && <p className="text-xs text-red-500">{error}</p>}

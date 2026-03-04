@@ -1,15 +1,17 @@
+import { storage } from '../utils/storage'
 import type {
   Service,
   MetricPoint,
   LogEntry,
   Alert,
   PaginatedResponse,
-  ServiceAlertSettings
+  ServiceAlertSettings,
+  ServerEntry
 } from '../types/index'
 
 let apiPort = 3001
 
-// Initialize API port on first load
+// Initialize API port on first load (fallback for local mock server)
 async function initApiPort() {
   if (window.api) {
     apiPort = await window.api.getApiPort()
@@ -17,7 +19,17 @@ async function initApiPort() {
 }
 initApiPort().catch(console.error)
 
-export const API_BASE = () => `http://127.0.0.1:${apiPort}`
+/**
+ * Dynamically determines the API base URL.
+ * Prioritizes the active server selected by the user.
+ */
+export const API_BASE = () => {
+  const activeServer = storage.get<ServerEntry | null>('activeServer', null)
+  if (activeServer?.url) {
+    return activeServer.url.replace(/\/$/, '')
+  }
+  return `http://127.0.0.1:${apiPort}`
+}
 
 // Services
 export async function getServices(period?: number) {
