@@ -36,8 +36,9 @@ interface AlertState extends Alert {
 
 const SEVERITY_OPTIONS = [
   { label: 'All', value: ALL },
-  { label: 'Warnings + Errors', value: 'warn' },
-  { label: 'Errors only', value: 'error' }
+  { label: 'Errors only', value: 'critical' },
+  { label: 'Warnings', value: 'warning' },
+  { label: 'Info', value: 'info' }
 ]
 
 const STATUS_OPTIONS = [
@@ -56,15 +57,17 @@ const TIME_RANGE_OPTIONS = [
 const PAGE_SIZE = 20
 const SKELETON_ROWS = 5
 
-// Map dropdown values to API params or undefined. Use client-side grouping for
-// the "Warnings + Errors" option (value 'warn') which should include both
-// 'warning' and 'critical'.
-const toParam = (v: string) => {
+// Map dropdown values to server-side API params
+const severityParam = (v: string): string | undefined => {
   if (v === ALL) return undefined
-  if (v === 'error') return 'critical'
-  // when selecting the grouped 'warn' option, request all severities and
-  // apply grouping client-side
-  return undefined
+  // values match the API directly: 'critical' | 'warning' | 'info'
+  return v
+}
+
+const statusParam = (v: string): string | undefined => {
+  if (v === ALL) return undefined
+  // values match the API directly: 'active' | 'acknowledged'
+  return v
 }
 
 export default function AlertsPage() {
@@ -86,8 +89,8 @@ export default function AlertsPage() {
     setError(null)
     try {
       const result = await getAlerts({
-        severity: toParam(filters.severity),
-        status: toParam(filters.status),
+        severity: severityParam(filters.severity),
+        status: statusParam(filters.status),
         page,
         limit: PAGE_SIZE,
         timeRange: filters.timeRange !== ALL ? parseInt(filters.timeRange) : undefined
@@ -118,7 +121,10 @@ export default function AlertsPage() {
   // Trigger a manual refresh from the Header button
   const isFirstRender = useRef(true)
   useEffect(() => {
-    if (isFirstRender.current) { isFirstRender.current = false; return }
+    if (isFirstRender.current) {
+      isFirstRender.current = false
+      return
+    }
     fetchAlerts()
   }, [refreshKey]) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -262,94 +268,83 @@ export default function AlertsPage() {
                   </TableCell>
                 </TableRow>
               ) : (
-                // Apply client-side grouping for the severity filter. When
-                // `filters.severity` is 'warn', include both 'warning' and
-                // 'critical'. When it's 'error', include only 'critical'.
-                alerts
-                  .filter((a) => {
-                    if (filters.severity === ALL) return true
-                    if (filters.severity === 'warn')
-                      return ['warning', 'critical'].includes(a.severity)
-                    if (filters.severity === 'error') return a.severity === 'critical'
-                    return true
-                  })
-                  .map((alert, idx) => (
-                    <TableRow
-                      key={alert.id}
-                      className="group border-b border-border/40 hover:bg-muted/30 transition-colors"
-                    >
-                      {/* Severity */}
-                      <TableCell>
-                        <span
-                          className={`inline-flex items-center rounded px-2 py-0.5 text-xs font-medium ${severityClass(alert.severity)}`}
-                        >
-                          {alert.severity.charAt(0).toUpperCase() + alert.severity.slice(1)}
-                        </span>
-                      </TableCell>
+                alerts.map((alert, idx) => (
+                  <TableRow
+                    key={alert.id}
+                    className="group border-b border-border/40 hover:bg-muted/30 transition-colors"
+                  >
+                    {/* Severity */}
+                    <TableCell>
+                      <span
+                        className={`inline-flex items-center rounded px-2 py-0.5 text-xs font-medium ${severityClass(alert.severity)}`}
+                      >
+                        {alert.severity.charAt(0).toUpperCase() + alert.severity.slice(1)}
+                      </span>
+                    </TableCell>
 
-                      {/* Service */}
-                      <TableCell className="font-medium">{alert.serviceName}</TableCell>
+                    {/* Service */}
+                    <TableCell className="font-medium">{alert.serviceName}</TableCell>
 
-                      {/* Message */}
-                      <TableCell className="max-w-xs">
-                        <p className="truncate">{alert.message}</p>
-                      </TableCell>
+                    {/* Message */}
+                    <TableCell className="max-w-xs">
+                      <p className="truncate">{alert.message}</p>
+                    </TableCell>
 
-                      {/* Time */}
-                      <TableCell className="text-sm text-muted-foreground whitespace-nowrap">
-                        {formatTime(alert.timestamp)}
-                      </TableCell>
+                    {/* Time */}
+                    <TableCell className="text-sm text-muted-foreground whitespace-nowrap">
+                      {formatTime(alert.timestamp)}
+                    </TableCell>
 
-                      {/* Status */}
-                      <TableCell>
-                        <span
-                          className={`inline-flex items-center gap-1 rounded px-2 py-0.5 text-xs font-medium ${statusClass(alert.status)}`}
-                        >
-                          {alert.status === 'active' ? (
-                            <>
-                              <AlertCircle className="h-3 w-3" />
-                              Active
-                            </>
-                          ) : (
-                            <>
-                              <CheckCircle className="h-3 w-3" />
-                              Ack
-                            </>
-                          )}
-                        </span>
-                      </TableCell>
-
-                      {/* Actions */}
-                      <TableCell>
+                    {/* Status */}
+                    <TableCell>
+                      <span
+                        className={`inline-flex items-center gap-1 rounded px-2 py-0.5 text-xs font-medium ${statusClass(alert.status)}`}
+                      >
                         {alert.status === 'active' ? (
-                          <div className="flex flex-col gap-1">
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => handleAcknowledge(alert.id, idx)}
-                              disabled={alert.isLoading}
-                            >
-                              {alert.isLoading ? (
-                                <>
-                                  <Loader2 className="h-3 w-3 animate-spin" />
-                                  <span>Acking…</span>
-                                </>
-                              ) : (
-                                'Ack'
-                              )}
-                            </Button>
-                            {alert.rowError && (
-                              <p className="text-xs text-destructive leading-tight">
-                                {alert.rowError}
-                              </p>
-                            )}
-                          </div>
+                          <>
+                            <AlertCircle className="h-3 w-3" />
+                            Active
+                          </>
                         ) : (
-                          <span className="text-xs text-muted-foreground">—</span>
+                          <>
+                            <CheckCircle className="h-3 w-3" />
+                            Ack
+                          </>
                         )}
-                      </TableCell>
-                    </TableRow>
-                  ))
+                      </span>
+                    </TableCell>
+
+                    {/* Actions */}
+                    <TableCell>
+                      {alert.status === 'active' ? (
+                        <div className="flex flex-col gap-1">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleAcknowledge(alert.id, idx)}
+                            disabled={alert.isLoading}
+                          >
+                            {alert.isLoading ? (
+                              <>
+                                <Loader2 className="h-3 w-3 animate-spin" />
+                                <span>Acking…</span>
+                              </>
+                            ) : (
+                              'Ack'
+                            )}
+                          </Button>
+                          {alert.rowError && (
+                            <p className="text-xs text-destructive leading-tight">
+                              {alert.rowError}
+                            </p>
+                          )}
+                        </div>
+                      ) : (
+                        <span className="text-xs text-muted-foreground">—</span>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                ))
               )}
             </TableBody>
           </Table>

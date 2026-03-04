@@ -32,7 +32,7 @@ app.get('/api/services/:id/metrics', (req, res) => {
 })
 
 app.get('/api/services/:id/logs', (req, res) => {
-  const { level, search, page, limit } = req.query
+  const { level, search, page, limit, timeRange } = req.query
   const {
     items,
     total,
@@ -43,7 +43,8 @@ app.get('/api/services/:id/logs', (req, res) => {
     level: level as string | undefined,
     search: search as string | undefined,
     page: page ? parseInt(page as string, 10) : undefined,
-    limit: limit ? parseInt(limit as string, 10) : undefined
+    limit: limit ? parseInt(limit as string, 10) : undefined,
+    timeRange: timeRange ? parseInt(timeRange as string, 10) : undefined
   })
   res.json({ items, total, page: p, limit: l })
 })
