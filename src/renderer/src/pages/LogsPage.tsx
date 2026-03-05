@@ -46,9 +46,8 @@ function formatTs(ts: number | string): string {
 // Severity hierarchy: INFO < WARN < ERROR
 const LEVEL_OPTIONS = [
   { label: 'All', value: ALL },
-  { label: 'Errors only', value: 'ERROR' },
-  { label: 'Warnings', value: 'WARN' },
-  { label: 'Info', value: 'INFO' }
+  { label: 'Warnings + Errors', value: 'WARN,ERROR' },
+  { label: 'Errors only', value: 'ERROR' }
 ]
 
 const TIME_RANGE_OPTIONS = [
@@ -211,9 +210,8 @@ export default function LogsPage() {
   const levelLabel =
     {
       all: 'All',
-      ERROR: 'Errors only',
-      WARN: 'Warnings',
-      INFO: 'Info'
+      'WARN,ERROR': 'Warnings + Errors',
+      ERROR: 'Errors only'
     }[level] || level
 
   const timeLabel =
@@ -270,54 +268,6 @@ export default function LogsPage() {
           {/* Active filter chips */}
           {hasFilters && (
             <div className="flex items-center gap-1.5 ml-1">
-              {level !== ALL && (
-                <span className="inline-flex items-center gap-1 rounded-full border border-border bg-muted/50 px-2.5 py-0.5 text-xs text-muted-foreground">
-                  Level: {levelLabel}
-                  <button
-                    onClick={() => {
-                      setLevel(ALL)
-                      setPage(1)
-                    }}
-                    className="hover:text-foreground ml-0.5"
-                  >
-                    <X className="h-2.5 w-2.5" />
-                  </button>
-                </span>
-              )}
-              {timeRange !== ALL && (
-                <span className="inline-flex items-center gap-1 rounded-full border border-border bg-muted/50 px-2.5 py-0.5 text-xs text-muted-foreground">
-                  Time: {timeLabel}
-                  <button
-                    onClick={() => {
-                      setTimeRange(ALL)
-                      setPage(1)
-                    }}
-                    className="hover:text-foreground ml-0.5"
-                  >
-                    <X className="h-2.5 w-2.5" />
-                  </button>
-                </span>
-              )}
-              {debouncedSearch && (
-                <span className="inline-flex items-center gap-1 rounded-full border border-border bg-muted/50 px-2.5 py-0.5 text-xs text-muted-foreground max-w-64">
-                  <span className="truncate">
-                    Search: &ldquo;
-                    {debouncedSearch.length > 16
-                      ? debouncedSearch.slice(0, 16) + '…'
-                      : debouncedSearch}
-                    &rdquo;
-                  </span>
-                  <button
-                    onClick={() => {
-                      setSearch('')
-                      setPage(1)
-                    }}
-                    className="hover:text-foreground ml-0.5 shrink-0"
-                  >
-                    <X className="h-2.5 w-2.5" />
-                  </button>
-                </span>
-              )}
               <button
                 onClick={clearFilters}
                 className="text-xs text-muted-foreground hover:text-foreground transition-colors underline underline-offset-2 ml-1"

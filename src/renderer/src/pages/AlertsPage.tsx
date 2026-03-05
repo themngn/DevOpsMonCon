@@ -128,6 +128,17 @@ export default function AlertsPage() {
     setFilters((prev) => ({ ...prev, [key]: value }))
   }
 
+  const clearFilters = () => {
+    setFilters({
+      severity: ALL,
+      status: ALL,
+      timeRange: ALL
+    })
+    setPage(1)
+  }
+
+  const hasFilters = filters.severity !== ALL || filters.status !== ALL || filters.timeRange !== ALL
+
   const handleAcknowledge = async (alertId: string, index: number) => {
     setAlerts((prev) =>
       prev.map((a, i) => (i === index ? { ...a, isLoading: true, rowError: undefined } : a))
@@ -207,7 +218,7 @@ export default function AlertsPage() {
       </div>
 
       {/* Filters */}
-      <div className="flex flex-wrap gap-3 shrink-0">
+      <div className="flex flex-wrap gap-3 items-center shrink-0">
         <Dropdown
           value={filters.severity}
           options={SEVERITY_OPTIONS}
@@ -226,6 +237,14 @@ export default function AlertsPage() {
           onChange={(v) => handleFilterChange('timeRange', v)}
           icon={Clock}
         />
+        {hasFilters && (
+          <button
+            onClick={clearFilters}
+            className="text-xs text-muted-foreground hover:text-foreground transition-colors underline underline-offset-2 ml-1"
+          >
+            Clear all
+          </button>
+        )}
       </div>
 
       {/* Table */}
