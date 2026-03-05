@@ -1,14 +1,13 @@
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect } from 'react'
 import { useRefresh } from '../contexts/RefreshProvider'
 import { format, fromUnixTime, parseISO, isValid } from 'date-fns'
 import { Search, X, Shield, Clock } from 'lucide-react'
 import { getAuditLogs } from '../services/api'
 import { useSettings } from '../hooks/useSettings'
-import { usePolling } from '../hooks/usePolling'
+import { usePolling } from '@/hooks/usePolling'
 import { Pagination } from '../components/Pagination'
 import { EmptyState } from '../components/EmptyState'
 import { ErrorState } from '../components/ErrorState'
-import type { AuditLogEntry, PaginatedResponse } from '../types/index'
 import { Button } from '@/components/ui/button'
 import { Dropdown } from '../components/ui/Dropdown'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -90,14 +89,6 @@ export default function AuditLogPage() {
   const [timeRange, setTimeRange] = useState<string>(ALL)
   const [page, setPage] = useState(1)
 
-  // data state
-  const [data, setData] = useState<PaginatedResponse<AuditLogEntry> | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-
-  // prevent scroll-reset on background polls
-  const isBackgroundPoll = useRef(false)
-
   // ── debounce search 300ms ──────────────────────────────────────────────────
   useEffect(() => {
     const id = setTimeout(() => {
@@ -113,56 +104,39 @@ export default function AuditLogPage() {
   }
 
   // ── fetch ──────────────────────────────────────────────────────────────────
-  const fetchAuditLogs = useCallback(
-    async (background = false) => {
-      if (!background) setLoading(true)
-      setError(null)
-      try {
-        const result = await getAuditLogs({
-          search: debouncedSearch || undefined,
-          timeRange: timeRange !== ALL ? parseInt(timeRange) : undefined,
-          page,
-          limit: PAGE_SIZE
-        })
-        setData(result)
-        reportLastUpdated(new Date())
-      } catch (err) {
-        if (!background) {
-          setError(err instanceof Error ? err.message : 'Failed to load audit logs')
-        }
-      } finally {
-        if (!background) setLoading(false)
-      }
-    },
-    [timeRange, debouncedSearch, page]
-  )
-
-  // initial / filter/page driven fetch
-  useEffect(() => {
-    isBackgroundPoll.current = false
-    fetchAuditLogs(false)
-  }, [fetchAuditLogs])
-
-  // Trigger a manual refresh from the Header button (skip on first render)
-  const isFirstRender = useRef(true)
-  useEffect(() => {
-    if (isFirstRender.current) {
-      isFirstRender.current = false
-      return
-    }
-    isBackgroundPoll.current = false
-    fetchAuditLogs(false)
-  }, [refreshKey]) // eslint-disable-line react-hooks/exhaustive-deps
-
-  // background polling — must NOT reset scroll
-  usePolling(
-    () => {
-      isBackgroundPoll.current = true
-      return fetchAuditLogs(true)
-    },
+  const {
+    data,
+    isLoading: loading,
+    error: pollingError,
+    refresh
+  } = usePolling(
+    () =>
+      getAuditLogs({
+        search: debouncedSearch || undefined,
+        timeRange: timeRange !== ALL ? parseInt(timeRange) : undefined,
+        page,
+        limit: PAGE_SIZE
+      }),
     pollingInterval,
     { enabled: autoRefresh }
   )
+
+  // Report fetch time to global context
+  useEffect(() => {
+    if (data) reportLastUpdated(new Date())
+  }, [data, reportLastUpdated])
+
+  // Re-fetch immediately when filters or page change
+  useEffect(() => {
+    refresh()
+  }, [debouncedSearch, timeRange, page, refresh])
+
+  // Trigger a manual refresh from the Header button
+  useEffect(() => {
+    if (refreshKey > 0) refresh()
+  }, [refreshKey]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const error = pollingError?.message || null
 
   // ── derived ────────────────────────────────────────────────────────────────
   const total = data?.total ?? 0
@@ -296,7 +270,7 @@ export default function AuditLogPage() {
               ) : error ? (
                 <TableRow className="hover:bg-transparent">
                   <TableCell colSpan={5} className="p-0">
-                    <ErrorState message="Failed to load audit logs" onRetry={() => fetchAuditLogs(false)} />
+                    <ErrorState message="Failed to load audit logs" onRetry={() => refresh()} />
                   </TableCell>
                 </TableRow>
               ) : logs.length === 0 ? (

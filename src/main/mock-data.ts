@@ -690,8 +690,8 @@ export function queryLogs(
     items = items.filter((l) => l.serviceId === opts.serviceId)
   }
   if (opts.level && opts.level !== 'all') {
-    const upper = opts.level.toUpperCase()
-    items = items.filter((l) => l.level === upper)
+    const requestedLevels = opts.level.toUpperCase().split(',')
+    items = items.filter((l) => requestedLevels.includes(l.level))
   }
   if (opts.search) {
     const q = opts.search.toLowerCase()

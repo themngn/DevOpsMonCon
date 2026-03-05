@@ -7,7 +7,7 @@ import { Label } from '../ui/Label'
 import { Button } from '../ui/Button'
 
 export function AlertSettingsTab({ serviceId }: { serviceId: string }) {
-  const [settings, setSettings] = useState<ServiceAlertSettings | null>(null)
+  const [settings, setSettings] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [saveMessage, setSaveMessage] = useState<{
@@ -41,29 +41,22 @@ export function AlertSettingsTab({ serviceId }: { serviceId: string }) {
     value: any
   ) => {
     if (!settings) return
-    setSettings((prev) => {
-      if (!prev) return prev
-      return {
-        ...prev,
-        [metric]: {
-          ...prev[metric],
-          [field]: value
-        }
+    
+    const newSettings = {
+      ...settings,
+      [metric]: {
+        ...settings[metric],
+        [field]: value
       }
-    })
+    }
+    
+    setSettings(newSettings)
 
     // Validation
     setErrors((prev) => {
       const newErrs = { ...prev }
-      const newSettings = {
-        ...settings,
-        [metric]: {
-          ...settings[metric],
-          [field]: value
-        }
-      }
-      const warn = newSettings[metric].warning
-      const crit = newSettings[metric].critical
+      const warn = parseFloat(String(newSettings[metric].warning)) || 0
+      const crit = parseFloat(String(newSettings[metric].critical)) || 0
       if (crit < warn) {
         newErrs[metric] = 'Critical must be ≥ warning'
       } else {
@@ -73,14 +66,33 @@ export function AlertSettingsTab({ serviceId }: { serviceId: string }) {
     })
   }
 
+  const handleBlur = (
+    metric: keyof ServiceAlertSettings & string,
+    field: keyof MetricThreshold & string,
+    value: string
+  ) => {
+    if (value === '') {
+      handleChange(metric, field, 0)
+    }
+  }
+
   const handleSave = async () => {
     if (!settings) return
     if (Object.keys(errors).length > 0) return
 
     setSaving(true)
     setSaveMessage(null)
+    
+    // Ensure all values are numbers before saving
+    const finalSettings: ServiceAlertSettings = {
+      cpu: { ...settings.cpu, warning: Number(settings.cpu.warning), critical: Number(settings.cpu.critical) },
+      ram: { ...settings.ram, warning: Number(settings.ram.warning), critical: Number(settings.ram.critical) },
+      disk: { ...settings.disk, warning: Number(settings.disk.warning), critical: Number(settings.disk.critical) },
+      iops: { ...settings.iops, warning: Number(settings.iops.warning), critical: Number(settings.iops.critical) }
+    }
+
     try {
-      await updateAlertSettings(serviceId, settings)
+      await updateAlertSettings(serviceId, finalSettings)
       setSaveMessage({ type: 'success', text: 'Settings saved!' })
       setTimeout(() => setSaveMessage(null), 3000)
     } catch (err: any) {
@@ -125,7 +137,8 @@ export function AlertSettingsTab({ serviceId }: { serviceId: string }) {
                   id={`${key}-warning`}
                   type="number"
                   value={settings[key].warning}
-                  onChange={(e) => handleChange(key, 'warning', Number(e.target.value))}
+                  onChange={(e) => handleChange(key, 'warning', e.target.value)}
+                  onBlur={(e) => handleBlur(key, 'warning', e.target.value)}
                   className="h-9"
                 />
               </div>
@@ -136,7 +149,8 @@ export function AlertSettingsTab({ serviceId }: { serviceId: string }) {
                   id={`${key}-critical`}
                   type="number"
                   value={settings[key].critical}
-                  onChange={(e) => handleChange(key, 'critical', Number(e.target.value))}
+                  onChange={(e) => handleChange(key, 'critical', e.target.value)}
+                  onBlur={(e) => handleBlur(key, 'critical', e.target.value)}
                   className="h-9 border-destructive/20 focus-visible:ring-destructive"
                 />
               </div>
