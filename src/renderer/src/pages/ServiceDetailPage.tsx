@@ -72,6 +72,7 @@ export default function ServiceDetailPage() {
 
   const handleRestart = async () => {
     if (!id) return
+    setIsRestartOpen(false)
     setActionStatus({ type: 'loading' })
     try {
       await restartService(id)
@@ -84,6 +85,7 @@ export default function ServiceDetailPage() {
 
   const handleDrain = async () => {
     if (!id) return
+    setIsDrainOpen(false)
     setActionStatus({ type: 'indeterminate' }) // indeterminate progress conceptually
     try {
       await drainService(id)
