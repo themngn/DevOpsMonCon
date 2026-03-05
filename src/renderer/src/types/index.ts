@@ -13,6 +13,7 @@ export interface Service {
   ip: string
   port: number
   version: string
+  downUntil?: number
 }
 
 export interface MetricPoint {

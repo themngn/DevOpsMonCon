@@ -36,6 +36,11 @@ export function setupIPC(mainWindow: BrowserWindow) {
     return true
   })
 
+  ipcMain.on('direct-sync-settings', async (_, settings: AppSettings) => {
+    const store = await getStore()
+    store.set('settings', settings)
+  })
+
   // Tray status update
   ipcMain.on(
     'updateTrayStatus',
@@ -48,13 +53,21 @@ export function setupIPC(mainWindow: BrowserWindow) {
     NotificationManager.send(title, body, mainWindow)
   })
 
-  // Event listeners are registered but will be triggered from main process
-  // These handlers just acknowledge the registration
-  ipcMain.on('onAlertReceived', (_event, alert) => {
-    console.log('Alert received:', alert)
+  ipcMain.on('sendTestNotification', () => {
+    NotificationManager.send(
+      '🔔 Test Notification',
+      'This is a test notification from DevOps Monitor. Your settings are working correctly!',
+      mainWindow
+    )
   })
 
-  ipcMain.on('onNavigate', (_event, route) => {
-    console.log('Navigate:', route)
+  // Event listeners are registered but will be triggered from main process
+  // These handlers just acknowledge the registration
+  ipcMain.on('onAlertReceived', (_event, _alert) => {
+    // Alert received silently
+  })
+
+  ipcMain.on('onNavigate', (_event, _route) => {
+    // Navigate silently
   })
 }

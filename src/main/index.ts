@@ -3,11 +3,17 @@ import path, { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import { createTray, destroyTray, updateTrayStatus } from './tray'
 
-// start built-in mock API server for development/testing
+// Start built-in mock API server for development/testing
 import { startMockServer } from './mock-server'
 import { setupIPC } from './ipc-handlers'
 import { mockEvents, Alert, getStatus, getActiveAlertCount } from './mock-data'
 import { NotificationManager } from './notifications'
+import { getStore } from './store'
+
+// Important: Set AppUserModelId BEFORE app is ready for Windows notifications
+if (process.platform === 'win32') {
+  app.setAppUserModelId('com.electron.app')
+}
 
 function createWindow(): BrowserWindow {
   // Create the browser window.
@@ -64,9 +70,6 @@ app.on('before-quit', () => {
 // initialization and is ready to create browser windows.
 // Some APIs can only be used after this event occurs.
 app.whenReady().then(() => {
-  // Set app user model id for windows
-  electronApp.setAppUserModelId('com.electron')
-
   // Default open or close DevTools by F12 in development
   // and ignore CommandOrControl + R in production.
   // see https://github.com/alex8088/electron-toolkit/tree/master/packages/utils
@@ -75,7 +78,9 @@ app.whenReady().then(() => {
   })
 
   // IPC test
-  ipcMain.on('ping', () => console.log('pong'))
+  ipcMain.on('ping', () => {
+    // Ping response is silent
+  })
 
   // start the mock backend before opening the window
   startMockServer()
@@ -94,28 +99,37 @@ app.whenReady().then(() => {
     updateTrayStatus(status.overall, mainWindow, tooltip, activeAlerts)
   }
 
-  // Periodic sync every 10 seconds (as requested by user)
+  // Periodic sync every 10 seconds
   const traySyncInterval = setInterval(syncTray, 10000)
 
-  // Listen for new alerts from mock data and trigger notifications
+  // Listen for new alerts from mock data and trigger system notifications
   mockEvents.on('new-alert', async (alert: Alert) => {
-    // Get latest settings from store (key is 'settings')
-    const store = await (await import('./store')).getStore()
-    const settings = store.get('settings') || {
-      notificationsEnabled: true,
-      notificationThreshold: 'all'
-    }
+    const store = await getStore()
+    const settings = store.get('settings')
+    
+    const notificationsEnabled = settings?.notificationsEnabled ?? true
+    const notificationThreshold = settings?.notificationThreshold ?? 'all'
 
-    // Explicitly check for Mute/Off state
-    if (!settings.notificationsEnabled || settings.notificationThreshold === 'off') {
+    if (!notificationsEnabled || notificationThreshold === 'off') {
       return
     }
 
-    const severityMap: Record<string, number> = { info: 0, warning: 1, critical: 2, all: -1 }
-    const threshold = severityMap[settings.notificationThreshold] ?? -1
-    const alertSeverity = severityMap[alert.severity] ?? 0
+    // Direct check for 'all' to ensure it always works
+    let shouldNotify = false
+    if (notificationThreshold === 'all') {
+      shouldNotify = true
+    } else {
+      const severityMap: Record<string, number> = { 
+        'info': 0, 
+        'warning': 1, 
+        'critical': 2
+      }
+      const thresholdValue = severityMap[notificationThreshold] ?? 1
+      const alertValue = severityMap[alert.severity] ?? 0
+      shouldNotify = alertValue >= thresholdValue
+    }
 
-    if (alertSeverity >= threshold) {
+    if (shouldNotify) {
       const emoji = alert.severity === 'critical' ? '🚨' : alert.severity === 'warning' ? '⚠️' : 'ℹ️'
       NotificationManager.send(
         `${emoji} Alert: ${alert.serviceName}`,
@@ -123,6 +137,8 @@ app.whenReady().then(() => {
         mainWindow
       )
     }
+    
+    mainWindow.webContents.send('alert-received', alert)
   })
 
   app.on('activate', function () {

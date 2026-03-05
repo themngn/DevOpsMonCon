@@ -587,14 +587,6 @@ function tick(): void {
       down: 3
     }
     if (statusOrder[svc.status] > statusOrder[prevStatus]) {
-      // Reduce alerts for metrics and payment services
-      if (
-        (svc.name === 'metrics-collector' || svc.name === 'payment-processor') &&
-        Math.random() > 0.2
-      ) {
-        return
-      }
-
       const severity: AlertSeverity =
         svc.status === 'critical' || svc.status === 'down' ? 'critical' : 'warning'
       const newAlert: Alert = {
@@ -871,7 +863,7 @@ export function restartService(id: string): Promise<void> {
           message: 'Service restarted successfully — uptime reset',
           timestamp: Date.now()
         })
-        state.alerts.push({
+        const restartAlert: Alert = {
           id: uuid(),
           serviceId: s.id,
           serviceName: s.name,
@@ -879,7 +871,9 @@ export function restartService(id: string): Promise<void> {
           message: `${s.name}: Service restarted and back to healthy`,
           timestamp: Date.now(),
           status: 'active'
-        })
+        }
+        state.alerts.push(restartAlert)
+        mockEvents.emit('new-alert', restartAlert)
         resolve()
       },
       delay
