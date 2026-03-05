@@ -1,4 +1,5 @@
-import { Notification, BrowserWindow } from 'electron'
+import { Notification, BrowserWindow, nativeImage } from 'electron'
+import path from 'path'
 
 let lastNotificationTime: number = 0
 const THROTTLE_MS = 100
@@ -10,7 +11,13 @@ export const NotificationManager = {
     if (now - lastNotificationTime < THROTTLE_MS) return
     lastNotificationTime = now
 
-    const notification = new Notification({ title, body })
+    const iconPath = path.join(__dirname, '../../resources/icon.png')
+    const notification = new Notification({ 
+      title, 
+      body,
+      icon: nativeImage.createFromPath(iconPath)
+    })
+
     notification.on('click', () => {
       mainWindow.show()
       mainWindow.focus()

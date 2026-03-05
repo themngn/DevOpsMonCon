@@ -158,6 +158,6 @@ export function startMockServer(port = 3001) {
   mock.initMockData()
   mock.startTicker()
   app.listen(port, '0.0.0.0', () => {
-    console.log(`Mock server listening on http://127.0.0.1:${port}`)
+    // Server started silently
   })
 }

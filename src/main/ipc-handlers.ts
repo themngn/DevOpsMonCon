@@ -63,11 +63,11 @@ export function setupIPC(mainWindow: BrowserWindow) {
 
   // Event listeners are registered but will be triggered from main process
   // These handlers just acknowledge the registration
-  ipcMain.on('onAlertReceived', (_event, alert) => {
-    console.log('Alert received:', alert)
+  ipcMain.on('onAlertReceived', (_event, _alert) => {
+    // Alert received silently
   })
 
-  ipcMain.on('onNavigate', (_event, route) => {
-    console.log('Navigate:', route)
+  ipcMain.on('onNavigate', (_event, _route) => {
+    // Navigate silently
   })
 }

@@ -3,7 +3,7 @@ import path, { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import { createTray, destroyTray, updateTrayStatus } from './tray'
 
-// start built-in mock API server for development/testing
+// Start built-in mock API server for development/testing
 import { startMockServer } from './mock-server'
 import { setupIPC } from './ipc-handlers'
 import { mockEvents, Alert, getStatus, getActiveAlertCount } from './mock-data'
@@ -78,7 +78,9 @@ app.whenReady().then(() => {
   })
 
   // IPC test
-  ipcMain.on('ping', () => console.log('pong'))
+  ipcMain.on('ping', () => {
+    // Ping response is silent
+  })
 
   // start the mock backend before opening the window
   startMockServer()
@@ -112,17 +114,22 @@ app.whenReady().then(() => {
       return
     }
 
-    const severityMap: Record<string, number> = { 
-      'info': 0, 
-      'warning': 1, 
-      'critical': 2, 
-      'all': -1 
+    // Direct check for 'all' to ensure it always works
+    let shouldNotify = false
+    if (notificationThreshold === 'all') {
+      shouldNotify = true
+    } else {
+      const severityMap: Record<string, number> = { 
+        'info': 0, 
+        'warning': 1, 
+        'critical': 2
+      }
+      const thresholdValue = severityMap[notificationThreshold] ?? 1
+      const alertValue = severityMap[alert.severity] ?? 0
+      shouldNotify = alertValue >= thresholdValue
     }
-    
-    const thresholdValue = severityMap[notificationThreshold] ?? -1
-    const alertValue = severityMap[alert.severity] ?? 0
 
-    if (alertValue >= thresholdValue) {
+    if (shouldNotify) {
       const emoji = alert.severity === 'critical' ? '🚨' : alert.severity === 'warning' ? '⚠️' : 'ℹ️'
       NotificationManager.send(
         `${emoji} Alert: ${alert.serviceName}`,
