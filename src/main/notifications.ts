@@ -1,7 +1,7 @@
 import { Notification, BrowserWindow } from 'electron'
 
 let lastNotificationTime: number = 0
-const THROTTLE_MS = 500
+const THROTTLE_MS = 100
 
 export const NotificationManager = {
   send: (title: string, body: string, mainWindow: BrowserWindow) => {

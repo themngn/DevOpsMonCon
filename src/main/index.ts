@@ -10,6 +10,11 @@ import { mockEvents, Alert, getStatus, getActiveAlertCount } from './mock-data'
 import { NotificationManager } from './notifications'
 import { getStore } from './store'
 
+// Important: Set AppUserModelId BEFORE app is ready for Windows notifications
+if (process.platform === 'win32') {
+  app.setAppUserModelId('com.electron.app')
+}
+
 function createWindow(): BrowserWindow {
   // Create the browser window.
   const mainWindow = new BrowserWindow({
@@ -65,9 +70,6 @@ app.on('before-quit', () => {
 // initialization and is ready to create browser windows.
 // Some APIs can only be used after this event occurs.
 app.whenReady().then(() => {
-  // Set app user model id for windows
-  electronApp.setAppUserModelId('com.electron')
-
   // Default open or close DevTools by F12 in development
   // and ignore CommandOrControl + R in production.
   // see https://github.com/alex8088/electron-toolkit/tree/master/packages/utils

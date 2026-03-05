@@ -53,6 +53,14 @@ export function setupIPC(mainWindow: BrowserWindow) {
     NotificationManager.send(title, body, mainWindow)
   })
 
+  ipcMain.on('sendTestNotification', () => {
+    NotificationManager.send(
+      '🔔 Test Notification',
+      'This is a test notification from DevOps Monitor. Your settings are working correctly!',
+      mainWindow
+    )
+  })
+
   // Event listeners are registered but will be triggered from main process
   // These handlers just acknowledge the registration
   ipcMain.on('onAlertReceived', (_event, alert) => {

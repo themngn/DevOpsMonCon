@@ -10,6 +10,7 @@ export interface RendererAPI {
   directSyncSettings(settings: AppSettings): void
   updateTrayStatus(status: string, tooltip: string, alertsCount: number): void
   sendNotification(title: string, body: string): void
+  sendTestNotification(): void
   onAlertReceived(callback: (alert: any) => void): () => void
   onNavigate(callback: (route: string) => void): () => void
 }

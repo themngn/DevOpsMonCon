@@ -13,6 +13,9 @@ const api = {
   sendNotification: (title: string, body: string) => {
     ipcRenderer.send('sendNotification', title, body)
   },
+  sendTestNotification: () => {
+    ipcRenderer.send('sendTestNotification')
+  },
   onAlertReceived: (callback: (alert: any) => void) => {
     const sub = (_: any, alert: any) => callback(alert)
     ipcRenderer.on('alert-received', sub)

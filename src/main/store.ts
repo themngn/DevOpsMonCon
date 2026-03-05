@@ -18,7 +18,9 @@ async function getStore() {
       defaults: {
         settings: {
           pollingInterval: 15000,
-          autoRefresh: true
+          autoRefresh: true,
+          notificationsEnabled: true,
+          notificationThreshold: 'all'
         },
         theme: 'system',
         servers: [],

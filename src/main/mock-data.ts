@@ -587,14 +587,6 @@ function tick(): void {
       down: 3
     }
     if (statusOrder[svc.status] > statusOrder[prevStatus]) {
-      // Reduce alerts for metrics and payment services
-      if (
-        (svc.name === 'metrics-collector' || svc.name === 'payment-processor') &&
-        Math.random() > 0.2
-      ) {
-        return
-      }
-
       const severity: AlertSeverity =
         svc.status === 'critical' || svc.status === 'down' ? 'critical' : 'warning'
       const newAlert: Alert = {
