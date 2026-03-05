@@ -1,6 +1,5 @@
-import React, { createContext, useContext, useState } from 'react'
+import React, { createContext, useContext, useState, useEffect, useRef } from 'react'
 import { storage } from '../utils/storage'
-
 import { AppSettings } from '../types'
 
 interface Settings extends AppSettings {}
@@ -19,20 +18,35 @@ interface SettingsContextType extends Settings {
 const SettingsContext = createContext<SettingsContextType | undefined>(undefined)
 
 export function SettingsProvider({ children }: { children: React.ReactNode }) {
-  const [settings, setSettings] = useState<Settings>(() =>
-    storage.get<Settings>('app-settings', DEFAULT_SETTINGS)
-  )
+  const [settings, setSettings] = useState<Settings>(() => {
+    const saved = storage.get<Partial<Settings>>('app-settings', {})
+    return { ...DEFAULT_SETTINGS, ...saved }
+  })
+
+  // Use a ref to prevent syncing on the very first mount
+  const isInitialMount = useRef(true)
+
+  // Sync settings to Main process whenever they change
+  useEffect(() => {
+    if (isInitialMount.current) {
+      isInitialMount.current = false
+      if (window.api?.saveSettings) {
+        window.api.saveSettings(settings)
+      }
+      return
+    }
+
+    if (window.api?.directSyncSettings) {
+      window.api.directSyncSettings(settings)
+    } else if (window.api?.saveSettings) {
+      window.api.saveSettings(settings)
+    }
+  }, [settings])
 
   const updateSettings = (newSettings: Partial<Settings>) => {
     setSettings((prev) => {
       const updated = { ...prev, ...newSettings }
       storage.set('app-settings', updated)
-      
-      // Sync with main process so notifications can respect these settings
-      if (window.api?.saveSettings) {
-        window.api.saveSettings(updated)
-      }
-      
       return updated
     })
   }

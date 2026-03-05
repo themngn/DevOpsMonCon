@@ -8,6 +8,7 @@ import { startMockServer } from './mock-server'
 import { setupIPC } from './ipc-handlers'
 import { mockEvents, Alert, getStatus, getActiveAlertCount } from './mock-data'
 import { NotificationManager } from './notifications'
+import { getStore } from './store'
 
 function createWindow(): BrowserWindow {
   // Create the browser window.
@@ -94,28 +95,32 @@ app.whenReady().then(() => {
     updateTrayStatus(status.overall, mainWindow, tooltip, activeAlerts)
   }
 
-  // Periodic sync every 10 seconds (as requested by user)
+  // Periodic sync every 10 seconds
   const traySyncInterval = setInterval(syncTray, 10000)
 
-  // Listen for new alerts from mock data and trigger notifications
+  // Listen for new alerts from mock data and trigger system notifications
   mockEvents.on('new-alert', async (alert: Alert) => {
-    // Get latest settings from store (key is 'settings')
-    const store = await (await import('./store')).getStore()
-    const settings = store.get('settings') || {
-      notificationsEnabled: true,
-      notificationThreshold: 'all'
-    }
+    const store = await getStore()
+    const settings = store.get('settings')
+    
+    const notificationsEnabled = settings?.notificationsEnabled ?? true
+    const notificationThreshold = settings?.notificationThreshold ?? 'all'
 
-    // Explicitly check for Mute/Off state
-    if (!settings.notificationsEnabled || settings.notificationThreshold === 'off') {
+    if (!notificationsEnabled || notificationThreshold === 'off') {
       return
     }
 
-    const severityMap: Record<string, number> = { info: 0, warning: 1, critical: 2, all: -1 }
-    const threshold = severityMap[settings.notificationThreshold] ?? -1
-    const alertSeverity = severityMap[alert.severity] ?? 0
+    const severityMap: Record<string, number> = { 
+      'info': 0, 
+      'warning': 1, 
+      'critical': 2, 
+      'all': -1 
+    }
+    
+    const thresholdValue = severityMap[notificationThreshold] ?? -1
+    const alertValue = severityMap[alert.severity] ?? 0
 
-    if (alertSeverity >= threshold) {
+    if (alertValue >= thresholdValue) {
       const emoji = alert.severity === 'critical' ? '🚨' : alert.severity === 'warning' ? '⚠️' : 'ℹ️'
       NotificationManager.send(
         `${emoji} Alert: ${alert.serviceName}`,
@@ -123,6 +128,8 @@ app.whenReady().then(() => {
         mainWindow
       )
     }
+    
+    mainWindow.webContents.send('alert-received', alert)
   })
 
   app.on('activate', function () {

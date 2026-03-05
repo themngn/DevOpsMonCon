@@ -36,6 +36,11 @@ export function setupIPC(mainWindow: BrowserWindow) {
     return true
   })
 
+  ipcMain.on('direct-sync-settings', async (_, settings: AppSettings) => {
+    const store = await getStore()
+    store.set('settings', settings)
+  })
+
   // Tray status update
   ipcMain.on(
     'updateTrayStatus',
