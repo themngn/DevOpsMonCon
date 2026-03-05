@@ -412,7 +412,7 @@ export function initMockData(): void {
       // Reduce historical alerts for metrics and payment services
       if (
         (service.name === 'metrics-collector' || service.name === 'payment-processor') &&
-        Math.random() > 0.2
+        Math.random() > 0.05
       ) {
         service = randomChoice(
           state.services.filter(
@@ -587,6 +587,11 @@ function tick(): void {
       down: 3
     }
     if (statusOrder[svc.status] > statusOrder[prevStatus]) {
+      // Significantly reduce alert frequency for these services without changing their stats/status
+      if ((isPayment || isMetrics) && Math.random() > 0.05) {
+        return
+      }
+
       const severity: AlertSeverity =
         svc.status === 'critical' || svc.status === 'down' ? 'critical' : 'warning'
       const newAlert: Alert = {
