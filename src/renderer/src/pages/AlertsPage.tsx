@@ -1,4 +1,4 @@
-﻿import { useState, useCallback, useEffect, useRef } from 'react'
+﻿import { useState, useEffect } from 'react'
 import { formatDistanceToNow } from 'date-fns'
 import { AlertCircle, CheckCircle, Loader2, ShieldAlert, Filter, Clock } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -19,10 +19,9 @@ import { useSettings } from '@/hooks/useSettings'
 import { useRefresh } from '@/contexts/RefreshProvider'
 import { getAlerts, acknowledgeAlert } from '@/services/api'
 import type { Alert, AlertSeverity, AlertStatus } from '@/types/index'
-import { Switch } from '../components/ui/Switch'
-import { Label } from '../components/ui/Label'
 import { ToggleGroup, ToggleGroupItem } from '../components/ui/ToggleGroup'
-import { Bell, BellOff } from 'lucide-react'
+import { BellOff } from 'lucide-react'
+import { usePolling } from '@/hooks/usePolling'
 
 // Use "all" as sentinel since empty strings aren't valid option values
 const ALL = 'all'
@@ -59,7 +58,6 @@ const TIME_RANGE_OPTIONS = [
 ]
 
 const PAGE_SIZE = 20
-const SKELETON_ROWS = 5
 
 // Map dropdown values to server-side API params
 const severityParam = (v: string): string | undefined => {
@@ -75,11 +73,9 @@ const statusParam = (v: string): string | undefined => {
 }
 
 export default function AlertsPage() {
-  const { pollingInterval, autoRefresh, notificationsEnabled, notificationThreshold, updateSettings } = useSettings()
+  const { pollingInterval, autoRefresh, notificationThreshold, updateSettings } = useSettings()
   const { refreshKey, triggerRefresh, reportLastUpdated } = useRefresh()
   const [alerts, setAlerts] = useState<AlertState[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
   const [page, setPage] = useState(1)
   const [total, setTotal] = useState(0)
   const [filters, setFilters] = useState<Filters>({
@@ -88,49 +84,44 @@ export default function AlertsPage() {
     timeRange: ALL
   })
 
-  const fetchAlerts = useCallback(async () => {
-    setLoading(true)
-    setError(null)
-    try {
-      const result = await getAlerts({
+  const {
+    data,
+    isLoading: loading,
+    error: pollingError,
+    refresh
+  } = usePolling(
+    () =>
+      getAlerts({
         severity: severityParam(filters.severity),
         status: statusParam(filters.status),
         page,
         limit: PAGE_SIZE,
         timeRange: filters.timeRange !== ALL ? parseInt(filters.timeRange) : undefined
-      })
-      setAlerts(result.items.map((a) => ({ ...a, isLoading: false, rowError: undefined })))
-      setTotal(result.total)
+      }),
+    pollingInterval,
+    { enabled: autoRefresh }
+  )
+
+  // Sync data to local state for row-level interactions (Acking)
+  useEffect(() => {
+    if (data) {
+      setAlerts(data.items.map((a) => ({ ...a, isLoading: false, rowError: undefined })))
+      setTotal(data.total)
       reportLastUpdated(new Date())
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to fetch alerts')
-      setAlerts([])
-    } finally {
-      setLoading(false)
     }
-  }, [filters, page, reportLastUpdated])
+  }, [data, reportLastUpdated])
 
   // Re-fetch immediately whenever filters or page change
   useEffect(() => {
-    fetchAlerts()
-  }, [filters, page]) // eslint-disable-line react-hooks/exhaustive-deps
-
-  // Also poll on interval (auto-refresh)
-  useEffect(() => {
-    if (!autoRefresh) return
-    const id = setInterval(fetchAlerts, pollingInterval)
-    return () => clearInterval(id)
-  }, [autoRefresh, pollingInterval, fetchAlerts])
+    refresh()
+  }, [filters, page, refresh])
 
   // Trigger a manual refresh from the Header button
-  const isFirstRender = useRef(true)
   useEffect(() => {
-    if (isFirstRender.current) {
-      isFirstRender.current = false
-      return
-    }
-    fetchAlerts()
+    if (refreshKey > 0) refresh()
   }, [refreshKey]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const error = pollingError?.message || null
 
   const handleFilterChange = (key: keyof Filters, value: string) => {
     setPage(1)
@@ -291,7 +282,7 @@ export default function AlertsPage() {
               ) : error ? (
                 <TableRow>
                   <TableCell colSpan={6} className="p-0">
-                    <ErrorState message={error} onRetry={fetchAlerts} />
+                    <ErrorState message={error} onRetry={() => refresh()} />
                   </TableCell>
                 </TableRow>
               ) : alerts.length === 0 ? (

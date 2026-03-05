@@ -4,12 +4,9 @@ import {
   ChevronLeft, 
   Cpu, 
   HardDrive, 
-  Clock, 
   Activity, 
-  Box, 
   Power, 
-  Droplets, 
-  Loader2 
+  Droplets
 } from 'lucide-react'
 import { getService, restartService, drainService } from '../services/api'
 import type { Service } from '../types/index'
@@ -21,7 +18,8 @@ import { MetricsTab } from '../components/services/MetricsTab'
 import { LogsTab } from '../components/services/LogsTab'
 import { AlertSettingsTab } from '../components/services/AlertSettingsTab'
 import { useSettings } from '../hooks/useSettings'
-import { usePolling } from '../hooks/usePolling'
+import { useRefresh } from '../contexts/RefreshProvider'
+import { usePolling } from '@/hooks/usePolling'
 
 import { ServiceDetailSkeleton } from '../components/shared/LoadingSkeleton'
 
@@ -48,21 +46,29 @@ export default function ServiceDetailPage() {
     message?: string
   } | null>(null)
 
+  const { refreshKey, reportLastUpdated } = useRefresh()
+
   const fetchService = useCallback(async () => {
     if (!id) return
     try {
       const data = await getService(id)
       setService(data)
+      reportLastUpdated(new Date())
     } catch (err) {
       console.error(err)
     }
-  }, [id])
+  }, [id, reportLastUpdated])
 
   // Initial fetch + settings-aware polling
   useEffect(() => {
     fetchService()
   }, [fetchService])
   usePolling(fetchService, pollingInterval, { enabled: autoRefresh })
+
+  // Trigger a manual refresh from the Header button
+  useEffect(() => {
+    if (refreshKey > 0) fetchService()
+  }, [refreshKey, fetchService])
 
   const handleRestart = async () => {
     if (!id) return
@@ -153,7 +159,7 @@ export default function ServiceDetailPage() {
         title={`Restart ${service.name}?`}
         description="This will restart the service and result in ~30s downtime. Continue?"
         confirmLabel="Restart"
-        variant="warning"
+        variant="default"
         delaySeconds={3}
         onConfirm={handleRestart}
       />
